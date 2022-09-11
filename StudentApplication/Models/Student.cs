@@ -3,10 +3,10 @@ using StudentApplication.Attributes;
 
 namespace StudentApplication.Models;
 
-public class Student
+public class Student : IWithId<int>
 {
     [Key, RestKey]
-    public int StudentId { get; set; }
+    public int Id { get; set; }
     
     [RestKey]
     public string Email { get; set; } = string.Empty;
