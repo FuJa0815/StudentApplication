@@ -54,7 +54,7 @@ namespace StudentApplication.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
                     StartsAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     EndsAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Price = table.Column<decimal>(type: "TEXT", nullable: false)
@@ -70,13 +70,14 @@ namespace StudentApplication.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Email = table.Column<string>(type: "TEXT", nullable: false),
+                    Email = table.Column<string>(type: "TEXT", maxLength: 254, nullable: false),
                     FirstName = table.Column<string>(type: "TEXT", nullable: false),
                     LastName = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Students", x => x.Id);
+                    table.UniqueConstraint("AK_Students_Email", x => x.Email);
                 });
 
             migrationBuilder.CreateTable(

@@ -239,6 +239,7 @@ namespace StudentApplication.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("Price")
@@ -260,6 +261,7 @@ namespace StudentApplication.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasMaxLength(254)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FirstName")
@@ -271,6 +273,8 @@ namespace StudentApplication.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasAlternateKey("Email");
 
                     b.ToTable("Students");
                 });
