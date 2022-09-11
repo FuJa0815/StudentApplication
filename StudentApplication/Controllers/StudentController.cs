@@ -8,7 +8,7 @@ using StudentApplication.Models;
 
 namespace StudentApplication.Controllers;
 
-[ControllerName("Student")]
+/*[ControllerName("Student")]
 public class StudentControllerEmail : KeyRestController<Student, string>
 {
     public StudentControllerEmail(ApplicationDbContext db) : base(db)
@@ -22,10 +22,10 @@ public class StudentControllerEmail : KeyRestController<Student, string>
     public override Task<ActionResult> Delete(string email) => base.Delete(email);
 
     public override DbSet<Student> Model => Db.Students;
-}
+}*/
 
 [ControllerName("Student")]
-public class StudentControllerId : RestController<Student, int>
+public class StudentControllerId : RestController<Student>
 {
     public StudentControllerId(ApplicationDbContext db) : base(db)
     {

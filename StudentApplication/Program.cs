@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StudentApplication.Attributes;
 using StudentApplication.Data;
+using StudentApplication.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.Requ
 builder.Services.AddControllersWithViews(mvc =>
 {
     mvc.Conventions.Add(new ControllerNameAttributeConvention());
+    mvc.InputFormatters.Insert(0, MyJsonPatchInputFormatter.GetJsonPatchInputFormatter());
 });
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 

@@ -1,12 +1,10 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Mvc;
-using StudentApplication.Models;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface IFetchableController<T, TKey> : IWithModel<T, TKey>
-    where T : class, IIdentifiable<TKey>
-    where TKey : IComparable, IEquatable<TKey>
+public interface IFetchableController<T> : IWithModel<T>
+    where T : class
 {
     protected Expression<Func<T, object>>[] IgnoreProperties { get; }
     

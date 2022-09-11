@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using StudentApplication.Models;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface ICreatableController<T, TKey> : IWithModel<T, TKey>
-    where T : class, IIdentifiable<TKey>
-    where TKey : IComparable, IEquatable<TKey>
+public interface ICreatableController<T> : IWithModel<T>
+    where T : class
 {
-    public Task<ActionResult<TKey>> Create(T body);
+    public Task<ActionResult<object>> Create(T body);
 }

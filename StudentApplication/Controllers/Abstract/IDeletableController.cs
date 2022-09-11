@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using StudentApplication.Models;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface IDeletableController<T, TKey> : IWithModel<T, TKey>
-    where T : class, IIdentifiable<TKey>
-    where TKey : IComparable, IEquatable<TKey>
+public interface IDeletableController<T> : IWithModel<T>
+    where T : class
 {
-    public Task<ActionResult> Delete(TKey id);
+    public Task<ActionResult> Delete(string id);
 }

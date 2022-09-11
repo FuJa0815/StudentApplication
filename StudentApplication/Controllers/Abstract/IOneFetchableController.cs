@@ -4,12 +4,11 @@ using StudentApplication.Models;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface IOneFetchableController<T, TKey> : IWithModel<T, TKey>
-    where T : class, IIdentifiable<TKey>
-    where TKey : IEquatable<TKey>
+public interface IOneFetchableController<T> : IWithModel<T>
+    where T : class
 {
     protected Expression<Func<T, object>>[] IgnoreProperties { get; }
     
     [HttpGet("{id}")]
-    public Task<ActionResult<T>> GetOne([FromRoute] TKey id);
+    public Task<ActionResult<T>> GetOne([FromRoute] string id);
 }

@@ -5,7 +5,7 @@ using StudentApplication.Models;
 
 namespace StudentApplication.Controllers;
 
-public class CourseController : RestController<Course, int>
+public class CourseController : RestController<Course>
 {
     public CourseController(ApplicationDbContext db) : base(db)
     {
