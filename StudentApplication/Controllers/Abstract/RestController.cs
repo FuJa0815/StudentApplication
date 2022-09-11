@@ -58,16 +58,17 @@ public abstract class RestController<T, TKey> : Controller
     }
 
     [HttpGet]
-    public virtual ActionResult<IEnumerable<T>> Get(
+    public virtual async Task<ActionResult<PaginationListResult<T>>> Get(
         [FromQuery] int page = 0,
         [FromQuery] int pageLength = int.MaxValue,
         [FromQuery] string? sortBy = null,
         [FromQuery] bool ascending = true,
         [FromQuery] string? query = "")
     {
-        var data = Service.Get(page, pageLength, sortBy, ascending, query);
+        var data = await Service.Get(page, pageLength, sortBy, ascending, query);
         if (data == null)
             return BadRequest($"Property {sortBy} not found");
+        
         return ToJson(data, GetListIgnoreProperties);
     }
 

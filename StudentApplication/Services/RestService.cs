@@ -1,11 +1,13 @@
 using System.Linq.Dynamic.Core;
 using System.Reflection;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.DynamicLinq;
 using StudentApplication.Attributes;
+using StudentApplication.Controllers.Abstract;
 using StudentApplication.Data;
 using StudentApplication.Hub;
 using StudentApplication.Models;
@@ -20,7 +22,7 @@ public interface IRestService<T, TKey>
     Func<string> GetControllerName { get; set; }
     Task<T?> GetOne(string id);
     Task<bool> Delete(string id);
-    IEnumerable<T>? Get(int page, int pageLength, string? sortBy, bool ascending, string? query);
+    Task<PaginationListResult<T>?> Get(int page, int pageLength, string? sortBy, bool ascending, string? query);
     Task<TKey> Create(T body);
     Task Override(T body);
     Task<T?> Patch(string id, JsonPatchDocument<T> patch);
@@ -77,24 +79,17 @@ public class RestService<T, TKey> : IRestService<T, TKey>
         return true;
     }
 
-    public IEnumerable<T>? Get(int page, int pageLength, string? sortBy, bool ascending, string? query)
+    public async Task<PaginationListResult<T>?> Get(int page, int pageLength, string? sortBy, bool ascending, string? query)
     {
         var data = Search(query);
-        if (sortBy != null)
-        {
-            var prop = typeof(T).GetProperty(sortBy, BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public);
-            if (prop == null)
-            {
-                Logger.LogWarning($"{ControllerName} does not have a property {sortBy}");
-                return null;
-            }
-            data = data.OrderBy(prop.GetValue);
-            if (!ascending)
-                data = data.Reverse();
-        }
+        var count = await data.CountAsync();
+        data = data.OrderBy(sortBy ?? KeysProperties.First().Name);
+        if (!ascending)
+            data = data.Reverse();
+
         data = data.Skip(page * pageLength).Take(pageLength);
 
-        return data;
+        return new PaginationListResult<T>(data, count);
     }
 
     public async Task<TKey> Create(T body)
@@ -167,7 +162,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
         return model;
     }
     
-    private IEnumerable<T> Search(string? term)
+    private IQueryable<T> Search(string? term)
     {
         if (string.IsNullOrWhiteSpace(term))
             return Model;
