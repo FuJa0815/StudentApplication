@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using StudentApplication.Controllers.Abstract;
@@ -14,4 +15,10 @@ public class CourseController : RestController<Course, int>
     }
 
     public override DbSet<Course> Model => Db.Courses;
+
+    protected override Expression<Func<Course, object>>[] GetListIgnoreProperties =>
+        new Expression<Func<Course, object>>[]
+        {
+            c => c.Students
+        };
 }
