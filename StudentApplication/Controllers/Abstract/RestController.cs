@@ -24,17 +24,19 @@ public abstract class RestController<T, TKey> : Controller
     where T : class, IWithId<TKey>
     where TKey : IEquatable<TKey>
 {
-    private IHubContext<NotificationHub> _hub;
+    private IHubContext<NotificationHub> Hub { get; }
 
     public ApplicationDbContext Db { get; }
     public abstract DbSet<T> Model { get; }
+    protected ILogger Logger { get; }
 
     private string ControllerName => ControllerContext.ActionDescriptor.ControllerName;
  
-    protected RestController(ApplicationDbContext db, IHubContext<NotificationHub> hub)
+    protected RestController(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger logger)
     {
         Db = db;
-        _hub = hub;
+        Hub = hub;
+        Logger = logger;
     }
     
     protected virtual Expression<Func<T, object>>[] GetOneIgnoreProperties { get; } = Array.Empty<Expression<Func<T, object>>>();
@@ -48,7 +50,12 @@ public abstract class RestController<T, TKey> : Controller
     {
         var model = await GetByAnyIdAsync(id);
         if (model == null)
-            return new NotFoundResult();
+        {
+            Logger.LogWarning($"{ControllerName} with id {id} not found");
+            return NotFound();
+        }
+        
+        Logger.LogDebug($"{ControllerName} with id {id} fetched");
         
         return ToJson(model, GetOneIgnoreProperties);
     }
@@ -58,10 +65,15 @@ public abstract class RestController<T, TKey> : Controller
     {
         var model = await GetByAnyIdAsync(id);
         if (model == null)
-            return new NotFoundResult();
+        {
+            Logger.LogWarning($"{ControllerName} with id {id} not found");
+            return NotFound();
+        }
+        
+        Logger.LogInformation($"{ControllerName} with id {id} deleted");
 
         Model.Remove(model);
-        await _hub.Clients.Groups(ControllerName, $"{ControllerName}.{model.Id}")
+        await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{model.Id}")
             .SendCoreAsync($"{ControllerName}_delete", new object[] { model.Id });
         await Db.SaveChangesAsync();
         return new NoContentResult();
@@ -75,7 +87,11 @@ public abstract class RestController<T, TKey> : Controller
         if (sortBy != null)
         {
             var prop = typeof(T).GetProperty(sortBy, BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public);
-            if (prop == null) return new BadRequestResult();
+            if (prop == null)
+            {
+                Logger.LogWarning($"{ControllerName} does not have a property {sortBy}");
+                return BadRequest($"Field {sortBy} not found");
+            }
             data = data.OrderBy(prop.GetValue);
             if (!ascending)
                 data = data.Reverse();
@@ -89,7 +105,8 @@ public abstract class RestController<T, TKey> : Controller
     public virtual async Task<ActionResult<object>> Create([FromBody] T body)
     {
         var model = await Model.AddAsync(body);
-        await _hub.Clients.Groups(ControllerName)
+        Logger.LogInformation($"{ControllerName} with id {model.Entity.Id} created");
+        await Hub.Clients.Groups(ControllerName)
             .SendCoreAsync($"{ControllerName}_create", new object[] { model.Entity });
         await Db.SaveChangesAsync();
         return NoContent();
@@ -98,8 +115,9 @@ public abstract class RestController<T, TKey> : Controller
     [HttpPut]
     public virtual async Task<ActionResult> Override([FromBody] T body)
     {
+        Logger.LogInformation($"{ControllerName} with id {body.Id} overridden");
         Db.Entry(body).State = EntityState.Modified;
-        await _hub.Clients.Groups(ControllerName, $"{ControllerName}.{body.Id}")
+        await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{body.Id}")
             .SendCoreAsync($"{ControllerName}_update", new object[] { body });
         await Db.SaveChangesAsync();
         return new NoContentResult();
@@ -110,11 +128,16 @@ public abstract class RestController<T, TKey> : Controller
     {
         var entity = await GetByAnyIdAsync(id);
         if (entity == null)
+        {
+            Logger.LogWarning($"{ControllerName} with id {id} not found");
             return NotFound();
+        }
 
+        Logger.LogInformation($"{ControllerName} with id {id} overridden");
+        
         patch.ApplyTo(entity);
         Db.Entry(entity).State = EntityState.Modified;
-        await _hub.Clients.Groups(ControllerName, $"{ControllerName}.{id}")
+        await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{id}")
             .SendCoreAsync($"{ControllerName}_update", new object[] { entity });
         await Db.SaveChangesAsync();
         return ToJson(entity, GetOneIgnoreProperties);

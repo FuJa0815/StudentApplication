@@ -12,7 +12,7 @@ namespace StudentApplication.Controllers;
 [ControllerName("Student")]
 public class StudentControllerId : RestController<Student, int>
 {
-    public StudentControllerId(ApplicationDbContext db, IHubContext<NotificationHub> hub) : base(db, hub)
+    public StudentControllerId(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger logger) : base(db, hub, logger)
     {
     }
 
