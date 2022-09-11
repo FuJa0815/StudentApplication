@@ -8,7 +8,7 @@ public class HomeController : Controller
 {
     private readonly ILogger _logger;
 
-    public HomeController(ILogger logger)
+    public HomeController(ILogger<HomeController> logger)
     {
         _logger = logger;
     }

@@ -10,7 +10,7 @@ namespace StudentApplication.Controllers;
 
 public class CourseController : RestController<Course, int>
 {
-    public CourseController(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger logger) : base(db, hub, logger)
+    public CourseController(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger<CourseController> logger) : base(db, hub, logger)
     {
     }
 

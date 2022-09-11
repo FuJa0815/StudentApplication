@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using StudentApplication.Attributes;
 using StudentApplication.Controllers.Abstract;
 using StudentApplication.Data;
 using StudentApplication.Hub;
@@ -9,10 +8,9 @@ using StudentApplication.Models;
 
 namespace StudentApplication.Controllers;
 
-[ControllerName("Student")]
-public class StudentControllerId : RestController<Student, int>
+public class StudentController : RestController<Student, int>
 {
-    public StudentControllerId(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger logger) : base(db, hub, logger)
+    public StudentController(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger<StudentController> logger) : base(db, hub, logger)
     {
     }
 

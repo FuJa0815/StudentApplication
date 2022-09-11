@@ -8,7 +8,7 @@ public class Course : IWithId<int>
     [Key, RestKey]
     public int Id { get; set; }
 
-    [MinLength(3), MaxLength(20), Required]
+    [MinLength(3), MaxLength(20), Required, RestSearchable]
     public string Name { get; set; } = string.Empty;
     [Required]
     public DateTime StartsAt { get; set; }

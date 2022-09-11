@@ -1,5 +1,7 @@
+using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -80,10 +82,14 @@ public abstract class RestController<T, TKey> : Controller
     }
 
     [HttpGet]
-    public virtual ActionResult<IEnumerable<T>> Get([FromQuery] int page = 0, [FromQuery] int pageLength = int.MaxValue,
-        [FromQuery] string? sortBy = null, [FromQuery] bool ascending = true)
+    public virtual ActionResult<IEnumerable<T>> Get(
+        [FromQuery] int page = 0,
+        [FromQuery] int pageLength = int.MaxValue,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool ascending = true,
+        [FromQuery] string? query = "")
     {
-        IEnumerable<T> data = Model;
+        IEnumerable<T> data = Search(query);
         if (sortBy != null)
         {
             var prop = typeof(T).GetProperty(sortBy, BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public);
@@ -147,6 +153,10 @@ public abstract class RestController<T, TKey> : Controller
          typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.GetCustomAttribute<RestKeyAttribute>() != null);
 
+    private static IEnumerable<PropertyInfo> SearchableProperties =>
+         typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(p => p.GetCustomAttribute<RestSearchableAttribute>() != null);
+    
     private static JsonResult ToJson(object obj, params Expression<Func<T, object>>[] expressions)
     {
         var properties = expressions.Select(exp =>
@@ -161,6 +171,15 @@ public abstract class RestController<T, TKey> : Controller
     }
 
 
+    private IEnumerable<T> Search(string? term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
+            return Model;
+        
+        var str = string.Join(" || ", SearchableProperties.Select(p => $"{p.Name}.Contains(@0)"));
+        return Model.Where(str, term);
+    }
+    
     private async Task<T?> GetByAnyIdAsync(object id)
     {
         T? model = null;

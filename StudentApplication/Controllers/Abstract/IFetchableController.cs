@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Mvc;
+using System;
 
 namespace StudentApplication.Controllers.Abstract;
 
@@ -13,5 +14,6 @@ public interface IFetchableController<T> : IWithModel<T>
         [FromQuery] int page = 0,
         [FromQuery] int pageLength = int.MaxValue,
         [FromQuery] string? sortBy = null,
-        [FromQuery] bool ascending = true);
+        [FromQuery] bool ascending = true,
+        [FromQuery] string? query = "");
 }

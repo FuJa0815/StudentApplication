@@ -3,7 +3,7 @@ namespace StudentApplication.Hub;
 public class NotificationHub : Microsoft.AspNetCore.SignalR.Hub
 {
     private ILogger Logger { get; }
-    public NotificationHub(ILogger logger)
+    public NotificationHub(ILogger<NotificationHub> logger)
     {
         Logger = logger;
     }
