@@ -5,16 +5,17 @@ using StudentApplication.Controllers.Abstract;
 using StudentApplication.Data;
 using StudentApplication.Hub;
 using StudentApplication.Models;
+using StudentApplication.Services;
 
 namespace StudentApplication.Controllers;
 
 public class StudentController : RestController<Student, int>
 {
-    public StudentController(ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger<StudentController> logger) : base(db, hub, logger)
+    public StudentController(IRestService<Student, int> service) : base(service)
     {
     }
 
-    public override DbSet<Student> Model => Db.Students;
+    public override DbSet<Student> ModelFromDb(ApplicationDbContext db) => db.Students;
 
     protected override Expression<Func<Student, object>>[] GetListIgnoreProperties => new Expression<Func<Student, object>>[]
     {

@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface ICreatableController<T> : IWithModel<T>
+public interface ICreatableController<T, TKey>
     where T : class
+    where TKey : IEquatable<TKey>
 {
-    public Task<ActionResult<object>> Create(T body);
+    public Task<ActionResult<TKey>> Create(T body);
 }

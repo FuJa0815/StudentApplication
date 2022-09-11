@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface IUpdatableController<T> : IWithModel<T>
+public interface IUpdatableController<T>
     where T : class
 {
     protected Expression<Func<T, object>>[] IgnoreProperties { get; }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StudentApplication.Attributes;
 using StudentApplication.Data;
 using StudentApplication.Hub;
+using StudentApplication.Services;
 using StudentApplication.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +33,8 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddSignalR();
 builder.Services.AddRazorPages();
+
+builder.Services.AddTransient(typeof(IRestService<,>), typeof(RestService<,>));
 
 var app = builder.Build();
 

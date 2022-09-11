@@ -4,7 +4,7 @@ using System;
 
 namespace StudentApplication.Controllers.Abstract;
 
-public interface IFetchableController<T> : IWithModel<T>
+public interface IFetchableController<T>
     where T : class
 {
     protected Expression<Func<T, object>>[] IgnoreProperties { get; }
