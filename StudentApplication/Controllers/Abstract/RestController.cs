@@ -3,29 +3,38 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.DynamicLinq;
 using StudentApplication.Attributes;
 using StudentApplication.Data;
+using StudentApplication.Hub;
+using StudentApplication.Models;
 
 namespace StudentApplication.Controllers.Abstract;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-public abstract class RestController<T> : Controller
+public abstract class RestController<T, TKey> : Controller
     , ICreatableController<T>
     , IFetchableController<T>
     , IUpdatableController<T>
     , IDeletableController<T>
     , IOneFetchableController<T>
-    where T : class
+    where T : class, IWithId<TKey>
+    where TKey : IEquatable<TKey>
 {
+    private IHubContext<NotificationHub> _hub;
+
     public ApplicationDbContext Db { get; }
     public abstract DbSet<T> Model { get; }
+
+    private string ControllerName => ControllerContext.ActionDescriptor.ControllerName;
  
-    protected RestController(ApplicationDbContext db)
+    protected RestController(ApplicationDbContext db, IHubContext<NotificationHub> hub)
     {
         Db = db;
+        _hub = hub;
     }
     
     protected virtual Expression<Func<T, object>>[] GetOneIgnoreProperties { get; } = Array.Empty<Expression<Func<T, object>>>();
@@ -52,6 +61,8 @@ public abstract class RestController<T> : Controller
             return new NotFoundResult();
 
         Model.Remove(model);
+        await _hub.Clients.Groups(ControllerName, $"{ControllerName}.{model.Id}")
+            .SendCoreAsync($"{ControllerName}_delete", new object[] { model.Id });
         await Db.SaveChangesAsync();
         return new NoContentResult();
     }
@@ -77,7 +88,9 @@ public abstract class RestController<T> : Controller
     [HttpPost]
     public virtual async Task<ActionResult<object>> Create([FromBody] T body)
     {
-        await Model.AddAsync(body);
+        var model = await Model.AddAsync(body);
+        await _hub.Clients.Groups(ControllerName)
+            .SendCoreAsync($"{ControllerName}_create", new object[] { model.Entity });
         await Db.SaveChangesAsync();
         return NoContent();
     }
@@ -86,6 +99,8 @@ public abstract class RestController<T> : Controller
     public virtual async Task<ActionResult> Override([FromBody] T body)
     {
         Db.Entry(body).State = EntityState.Modified;
+        await _hub.Clients.Groups(ControllerName, $"{ControllerName}.{body.Id}")
+            .SendCoreAsync($"{ControllerName}_update", new object[] { body });
         await Db.SaveChangesAsync();
         return new NoContentResult();
     }
@@ -99,7 +114,8 @@ public abstract class RestController<T> : Controller
 
         patch.ApplyTo(entity);
         Db.Entry(entity).State = EntityState.Modified;
-        
+        await _hub.Clients.Groups(ControllerName, $"{ControllerName}.{id}")
+            .SendCoreAsync($"{ControllerName}_update", new object[] { entity });
         await Db.SaveChangesAsync();
         return ToJson(entity, GetOneIgnoreProperties);
     }
