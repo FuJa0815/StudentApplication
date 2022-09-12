@@ -1,0 +1,71 @@
+@using StudentApplication.Common.Utils
+@using System.Reflection
+@using System.ComponentModel
+@using StudentApplication.Client.HttpRepository
+@using StudentApplication.Common.Attributes
+@typeparam T where T : class, IWithId<TKey> 
+@typeparam TKey where TKey : IEquatable<TKey>
+@inject RestData<T, TKey> Data
+<MyMudTable T="T" TKey="TKey" RowsPerPage="@Data.PageLength"
+          RowsPerPageChanged="async i => await Data.SetPageLengthAsync(i)"
+          Bordered="true"
+          AllowUnsorted="false"
+          TotalItems="@Data.Count"
+          Items="@Data"
+          Hover="true"
+          @bind-CurrentPage="@Data.Page"
+          Breakpoint="Breakpoint.Sm">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+        <MudSpacer/>
+        <MudTextField T="string" OnDebounceIntervalElapsed="async str => await Data.SetQueryAsync(str)" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Filled.Search" IconSize="Size.Medium" DebounceInterval="300"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        @foreach (var property in Properties)
+        {
+            <MudTh><MudTableSortLabel SortDirectionChanged="async direction => await SetOrderingAsync(property.Name, direction)" Enabled="@IsPropertySortable(property)" T="T">@GetPropertyName(property)</MudTableSortLabel></MudTh>
+        }
+    </HeaderContent>
+    <RowTemplate>
+        @foreach (var property in Properties)
+        {
+            <MudTd DataLabel="@GetPropertyName(property)">@property.GetValue(context)?.ToString()</MudTd>
+        }
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="@(Title+" per page")"/>
+    </PagerContent>
+</MyMudTable>
+
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+    
+    IEnumerable<PropertyInfo> Properties => typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+        .Where(p => !p.PropertyType.IsGenericType || typeof(IEnumerable<>).IsAssignableFrom(p.PropertyType.GetGenericTypeDefinition()));
+
+    private string GetPropertyName(PropertyInfo prop) => prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name;
+    private bool IsPropertySortable(PropertyInfo prop) => prop.GetCustomAttribute<RestSortableAttribute>() != null;
+
+    async Task SetOrderingAsync(string orderBy, SortDirection direction)
+    {
+        if (direction == SortDirection.None)
+            return;
+        await Data.SetSortAsync(orderBy, direction == SortDirection.Ascending);
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Data.CollectionChanged += (s, e) =>
+            {
+                StateHasChanged();
+            };
+            await Data.InitAsync();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+}

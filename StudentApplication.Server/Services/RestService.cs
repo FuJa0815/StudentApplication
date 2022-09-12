@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.DynamicLinq;
 using StudentApplication.Common.Attributes;
 using StudentApplication.Common.Models;
+using StudentApplication.Common.Utils;
 using StudentApplication.Server.Controllers.Abstract;
 using StudentApplication.Server.Data;
 using StudentApplication.Server.Hub;
@@ -81,22 +82,24 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     {
         var data = Search(query);
         var count = await data.CountAsync();
-        data = data.OrderBy(sortBy ?? KeysProperties.First().Name);
+        if (sortBy != null && SortableProperties.All(p => !string.Equals(p.Name, sortBy, StringComparison.CurrentCultureIgnoreCase)))
+            return null;
+        data = data.OrderBy(sortBy ?? "Id");
         if (!ascending)
             data = data.Reverse();
 
         data = data.Skip(page * pageLength).Take(pageLength);
 
-        return new PaginationListResult<T>(data, count);
+        return new PaginationListResult<T>(await data.ToListAsync(), count);
     }
 
     public async Task<TKey> Create(T body)
     {
         var model = await Model.AddAsync(body);
+        await Db.SaveChangesAsync();
         Logger.LogInformation($"{ControllerName} with id {model.Entity.Id} created");
         await Hub.Clients.Groups(ControllerName)
-            .SendCoreAsync($"{ControllerName}_create", new object[] { model.Entity });
-        await Db.SaveChangesAsync();
+            .SendCoreAsync($"{ControllerName}_create", new object?[] { model.Entity });
         return model.Entity.Id;
     }
 
@@ -105,7 +108,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
         Logger.LogInformation($"{ControllerName} with id {body.Id} overridden");
         Db.Entry(body).State = EntityState.Modified;
         await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{body.Id}")
-            .SendCoreAsync($"{ControllerName}_update", new object[] { body });
+            .SendCoreAsync($"{ControllerName}_update", new object?[] { body });
         await Db.SaveChangesAsync();
     }
 
@@ -122,9 +125,9 @@ public class RestService<T, TKey> : IRestService<T, TKey>
         
         patch.ApplyTo(entity);
         Db.Entry(entity).State = EntityState.Modified;
+        await Db.SaveChangesAsync();
         await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{id}")
             .SendCoreAsync($"{ControllerName}_update", new object[] { entity });
-        await Db.SaveChangesAsync();
         return entity;
     }
 
@@ -135,6 +138,10 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     private static IEnumerable<PropertyInfo> SearchableProperties =>
          typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.GetCustomAttribute<RestSearchableAttribute>() != null);
+    
+    private static IEnumerable<PropertyInfo> SortableProperties =>
+         typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(p => p.GetCustomAttribute<RestSortableAttribute>() != null);
     
     private async Task<T?> GetByAnyIdAsync(object id)
     {
@@ -165,7 +172,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
         if (string.IsNullOrWhiteSpace(term))
             return Model;
         
-        var str = string.Join(" || ", SearchableProperties.Select(p => $"{p.Name}.Contains(@0)"));
-        return Model.Where(str, term);
+        var str = string.Join(" || ", SearchableProperties.Select(p => $"{p.Name}.ToLower().Contains(@0)"));
+        return Model.Where(str, term.ToLower());
     }
 }

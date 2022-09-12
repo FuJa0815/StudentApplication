@@ -33,8 +33,7 @@ public class IgnorePropertiesConverter<T> : JsonConverter<T> where T : class
                 continue;
 
             
-            writer.WritePropertyName(JsonNamingPolicy.CamelCase.ConvertName(
-                prop.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? prop.Name));
+            writer.WritePropertyName(prop.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? prop.Name);
             JsonSerializer.Serialize(writer, prop.GetValue(value), prop.PropertyType, options);
         }
         writer.WriteEndObject();

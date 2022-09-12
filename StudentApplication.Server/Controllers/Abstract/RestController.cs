@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudentApplication.Common.Models;
+using StudentApplication.Common.Utils;
 using StudentApplication.Server.Data;
 using StudentApplication.Server.Services;
 
@@ -67,7 +68,7 @@ public abstract class RestController<T, TKey> : Controller
     {
         var data = await Service.Get(page, pageLength, sortBy, ascending, query);
         if (data == null)
-            return BadRequest($"Property {sortBy} not found");
+            return BadRequest($"Property {sortBy} not found or not sortable");
         
         return ToJson(data, GetListIgnoreProperties);
     }

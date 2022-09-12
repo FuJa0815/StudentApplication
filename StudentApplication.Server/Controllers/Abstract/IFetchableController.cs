@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Mvc;
+using StudentApplication.Common.Utils;
 
 namespace StudentApplication.Server.Controllers.Abstract;
 
@@ -17,15 +18,3 @@ public interface IFetchableController<T>
         [FromQuery] string? query = "");
 }
 
-public class PaginationListResult<T>
-{
-    public IEnumerable<T> Items { get; }
-    
-    public int TotalItems { get; }
-
-    public PaginationListResult(IEnumerable<T> items, int totalItems)
-    {
-        Items = items;
-        TotalItems = totalItems;
-    }
-}
