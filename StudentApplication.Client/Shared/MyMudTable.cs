@@ -6,7 +6,7 @@ using StudentApplication.Common.Utils;
 namespace StudentApplication.Client.Shared;
 
 public class MyMudTable<T, TKey> : MudTable<T>
-    where T : IWithId<TKey>
+    where T : IModel<TKey>
     where TKey : IEquatable<TKey>
 {
     

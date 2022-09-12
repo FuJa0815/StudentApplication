@@ -13,7 +13,7 @@ using StudentApplication.Common.Utils;
 namespace StudentApplication.Client.HttpRepository;
 
 public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionChanged
-    where T : IWithId<TKey>
+    where T : IModel<TKey>
     where TKey : IEquatable<TKey>
 {
     private readonly List<T> _list = new();
@@ -296,16 +296,13 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         item.Id = await ReadResultAsync<TKey>(await _client.PostAsync(_endpoint, JsonContent.Create(item)));
     }
 
-    public async Task Remove(TKey item)
+    public async Task<bool> Remove(TKey item)
     {
-        var response = await _client.DeleteAsync($"{_endpoint}/{item}");
-        response.EnsureSuccessStatusCode();
+        return (await _client.DeleteAsync($"{_endpoint}/{item}")).IsSuccessStatusCode;
     }
 
-    public async Task Update(T item)
+    public async Task<bool> Update(T item)
     {
-        var response = await _client.PutAsync($"{_endpoint}/{item.Id}", JsonContent.Create(item));
-        response.EnsureSuccessStatusCode();
+        return (await _client.PutAsync($"{_endpoint}", JsonContent.Create(item))).IsSuccessStatusCode;
     }
-
 }

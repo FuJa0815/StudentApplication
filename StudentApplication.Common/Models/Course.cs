@@ -6,7 +6,7 @@ using StudentApplication.Common.Utils;
 namespace StudentApplication.Common.Models;
 
 [RestEndpoint("courses")]
-public class Course : IWithId<int>
+public class Course : IModel<int>
 {
     [Key, RestKey, RestSortable]
     public int Id { get; set; }

@@ -19,7 +19,7 @@ public abstract class RestController<T, TKey> : Controller
     , IUpdatableController<T>
     , IDeletableController<T>
     , IOneFetchableController<T>
-    where T : class, IWithId<TKey>
+    where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
     [ApiExplorerSettings(IgnoreApi = true)]

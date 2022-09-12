@@ -3,7 +3,7 @@ using StudentApplication.Common.Attributes;
 
 namespace StudentApplication.Common.Utils;
 
-public interface IWithId<T>
+public interface IModel<T>
     where T : IEquatable<T>
 {
     [Key, RestKey]

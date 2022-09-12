@@ -1,20 +1,31 @@
 @using StudentApplication.Common.Utils
 @using System.Reflection
 @using System.ComponentModel
+@using System.ComponentModel.DataAnnotations
 @using StudentApplication.Client.HttpRepository
 @using StudentApplication.Common.Attributes
-@typeparam T where T : class, IWithId<TKey> 
+@typeparam T where T : class, IModel<TKey>
 @typeparam TKey where TKey : IEquatable<TKey>
 @inject RestData<T, TKey> Data
 <MyMudTable T="T" TKey="TKey" RowsPerPage="@Data.PageLength"
-          RowsPerPageChanged="async i => await Data.SetPageLengthAsync(i)"
-          Bordered="true"
-          AllowUnsorted="false"
-          TotalItems="@Data.Count"
-          Items="@Data"
-          Hover="true"
-          @bind-CurrentPage="@Data.Page"
-          Breakpoint="Breakpoint.Sm">
+            RowsPerPageChanged="async i => await Data.SetPageLengthAsync(i)"
+            Bordered="true"
+            @bind-SelectedItem="selectedItem"
+            SortLabel="Sort By"
+            CommitEditTooltip="Commit Edit"
+            RowEditPreview="BackupItem"
+            RowEditCancel="ResetItemToOriginalValues"
+            RowEditCommit="Commit"
+            AllowUnsorted="false"
+            TotalItems="@Data.Count"
+            Items="@Data"
+            Hover="true"
+            @bind-CurrentPage="@Data.Page"
+            Breakpoint="Breakpoint.Sm">
+    <ColGroup>
+        @ColGroup
+        <col/>
+    </ColGroup>
     <ToolBarContent>
         <MudText Typo="Typo.h6">@Title</MudText>
         <MudSpacer/>
@@ -33,15 +44,87 @@
         }
     </RowTemplate>
     <PagerContent>
-        <MudTablePager RowsPerPageString="@(Title+" per page")"/>
+        <MudTablePager RowsPerPageString="@(Title + " per page")"/>
     </PagerContent>
+    <RowEditingTemplate>
+        @foreach (var property in Properties)
+        {
+            @if (property.Name == "Id")
+            {
+                <MudTd DataLabel="Id">@context.Id</MudTd>
+            } else
+            {
+                <MudTd DataLabel="@GetPropertyName(property)">
+                    @if (IsWholeNumberType(property.PropertyType))
+                    {
+                        <MudNumericField T="long" Value="@((long)property.GetValue(context)!)" ValueChanged="@((long value) => property.SetValue(context, value))" Required Min="@(GetMin<long>(property))" Max="@(GetMax<long>(property))" Step="1"/>
+                    } else if(IsFloatingNumberType(property.PropertyType)) {
+                        <MudNumericField T="decimal" Value="@((decimal)property.GetValue(context)!)" ValueChanged="@((decimal value) => property.SetValue(context, value))" Required Min="@(GetMin<decimal>(property))" Max="@(GetMax<decimal>(property))" Step="@((decimal)0.1d)"/>
+                    } else if (property.PropertyType == typeof(DateTime)) {
+                        <MudDatePicker Date="@((DateTime)property.GetValue(context)!)" DateChanged="@(value => property.SetValue(context, value))" Required MinDate="@(GetMin<DateTime>(property))" MaxDate="@(GetMax<DateTime>(property))"/>
+                    } else {
+                        <MudTextField T="string" Value="@property.GetValue(context)!.ToString()" ValueChanged="@(value => property.SetValue(context, value))" Required MaxLength="@(GetMaxLength(property) ?? 100)"/>
+                    }
+                </MudTd>
+            }
+        }
+    </RowEditingTemplate>
 </MyMudTable>
 
 
 @code {
+    private T? selectedItem = null;
+    private T? itemBeforeEdit = null;
+    
     [Parameter]
     public string Title { get; set; } = string.Empty;
     
+    [Parameter]
+    public RenderFragment ColGroup { get; set; }
+
+    bool IsWholeNumberType(Type type)
+    {
+        var typeCode = Type.GetTypeCode(GetNonNullableType(type));
+        switch (typeCode)
+        {
+            case TypeCode.Byte:
+            case TypeCode.SByte:
+            case TypeCode.Int16:
+            case TypeCode.Int32:
+            case TypeCode.Int64:
+            case TypeCode.UInt16:
+            case TypeCode.UInt32:
+            case TypeCode.UInt64:
+                return true;
+            default:
+                return false;
+        }
+    }
+    bool IsFloatingNumberType(Type type)
+    {
+        var typeCode = Type.GetTypeCode(GetNonNullableType(type));
+        switch (typeCode)
+        {
+            case TypeCode.Decimal:
+            case TypeCode.Double:
+            case TypeCode.Single:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private THere GetMin<THere>(PropertyInfo property) => (THere)(property.GetCustomAttribute<RangeAttribute>()?.Minimum ?? GetNonNullableType(property.PropertyType).GetField("MinValue")!.GetValue(null)!);
+    private THere GetMax<THere>(PropertyInfo property) => (THere)(property.GetCustomAttribute<RangeAttribute>()?.Maximum ?? GetNonNullableType(property.PropertyType).GetField("MaxValue")!.GetValue(null)!);
+    private int? GetMaxLength(PropertyInfo property) => property.GetCustomAttribute<MaxLengthAttribute>()?.Length;
+
+    private Type GetNonNullableType(Type type)
+    {
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            return Nullable.GetUnderlyingType(type)!;
+        return type;
+    }
+
     IEnumerable<PropertyInfo> Properties => typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
         .Where(p => !p.PropertyType.IsGenericType || typeof(IEnumerable<>).IsAssignableFrom(p.PropertyType.GetGenericTypeDefinition()));
 
@@ -53,6 +136,28 @@
         if (direction == SortDirection.None)
             return;
         await Data.SetSortAsync(orderBy, direction == SortDirection.Ascending);
+    }
+
+    private void BackupItem(object item)
+    {
+        // Deep Clone
+        itemBeforeEdit = (T)item.Copy()!;
+    }
+
+    private async void Commit(object item)
+    {
+        if (await Data.Update((T)item)) return;
+        ResetItemToOriginalValues(item);
+        StateHasChanged();
+    }
+
+    private void ResetItemToOriginalValues(object item)
+    {
+        foreach (var prop in Properties)
+        {
+            if (prop.Name == "Id") continue;
+            prop.SetValue(item, prop.GetValue(itemBeforeEdit));
+        }
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)

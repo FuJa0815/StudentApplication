@@ -14,7 +14,7 @@ using StudentApplication.Server.Hub;
 namespace StudentApplication.Server.Services;
 
 public interface IRestService<T, TKey>
-    where T : class, IWithId<TKey>
+    where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
     Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; }
@@ -28,7 +28,7 @@ public interface IRestService<T, TKey>
 }
 
 public class RestService<T, TKey> : IRestService<T, TKey>
-    where T : class, IWithId<TKey>
+    where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
     private IHubContext<NotificationHub> Hub { get; }
@@ -106,10 +106,14 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     public async Task Override(T body)
     {
         Logger.LogInformation($"{ControllerName} with id {body.Id} overridden");
+
+        Model.Attach(body);
         Db.Entry(body).State = EntityState.Modified;
+        
+        await Db.SaveChangesAsync();
+        
         await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{body.Id}")
             .SendCoreAsync($"{ControllerName}_update", new object?[] { body });
-        await Db.SaveChangesAsync();
     }
 
     public async Task<T?> Patch(string id, JsonPatchDocument<T> patch)

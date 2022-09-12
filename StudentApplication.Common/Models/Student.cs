@@ -1,12 +1,14 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using StudentApplication.Common.Attributes;
 using StudentApplication.Common.Utils;
 
 namespace StudentApplication.Common.Models;
 
 [RestEndpoint("students")]
-public class Student : IWithId<int>
+[Index(nameof(Email), IsUnique = true)]
+public class Student : IModel<int>
 {
     [Key, RestKey, RestSortable]
     public int Id { get; set; }
