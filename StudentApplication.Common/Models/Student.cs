@@ -13,7 +13,7 @@ public class Student : IModel<int>
     [Key, RestKey, RestSortable]
     public int Id { get; set; }
     
-    [RestKey, Required, MinLength(6), MaxLength(254), RestSearchable, RestSortable, DisplayName("E-Mail")]
+    [RestKey, Required, MinLength(6), MaxLength(254), RestSearchable, RestSortable, EmailAddress, DisplayName("E-Mail")]
     public string Email { get; set; } = string.Empty;
     
     [Required, RestSearchable, RestSortable, DisplayName("Firstname")]

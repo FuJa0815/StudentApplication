@@ -1,6 +1,13 @@
 @page "/Students"
 @using StudentApplication.Common.Models
+@using System.ComponentModel.DataAnnotations
 
 <PageTitle>Students</PageTitle>
 
-<PaginatedTable T="Student" TKey="int" Title="Students"/>
+<PaginatedTable T="Student" TKey="int" Title="Students">
+    <Edit>
+        <MudTd><MudTextField Placeholder="Email" @bind-Value="@context.Email" For="@(()=>context.Email)" MaxLength="254" /></MudTd>
+        <MudTd><MudTextField Placeholder="Firstname" @bind-Value="@context.FirstName" For="@(()=>context.FirstName)" /></MudTd>
+        <MudTd><MudTextField Placeholder="Lastname" @bind-Value="@context.LastName" For="@(()=>context.LastName)" /></MudTd>
+    </Edit>
+</PaginatedTable>

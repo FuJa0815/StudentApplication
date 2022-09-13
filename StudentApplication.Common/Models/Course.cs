@@ -13,10 +13,12 @@ public class Course : IModel<int>
 
     [MinLength(3), MaxLength(20), Required, RestSearchable, RestSortable]
     public string Name { get; set; } = string.Empty;
+
     [Required, DisplayName("Starts at"), RestSortable]
-    public DateTime StartsAt { get; set; }
+    public DateTime StartsAt { get; set; } = DateTime.Today;
     [Required, DisplayName("Ends at"), RestSortable]
-    public DateTime EndsAt { get; set; }
+    public DateTime EndsAt { get; set; } = DateTime.Today;
+
     [Required, Range(0, double.MaxValue), RestSortable]
     public decimal Price { get; set; }
 
