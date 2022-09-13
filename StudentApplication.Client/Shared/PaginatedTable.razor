@@ -91,11 +91,7 @@
     public RenderFragment<T> Edit { get; set; }
 
     [Parameter]
-    public HashSet<T> SelectedItems 
-    {
-        get;
-        set; 
-    } = new();
+    public HashSet<T> SelectedItems { get; set; } = new();
      
     [Parameter]
     public EventCallback<HashSet<T>> SelectedItemsChanged { get; set; }

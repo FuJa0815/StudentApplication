@@ -4,10 +4,14 @@ using Newtonsoft.Json.Serialization;
 
 namespace StudentApplication.Server.Controllers.Abstract;
 
+/// <summary>
+///   Custom contract resolver that skips the serialization of given properties
+/// </summary>
 public class IgnorePropertiesContractResolver : DefaultContractResolver
 {
     private readonly IEnumerable<PropertyInfo> _properties;
 
+    /// <param name="properties">Properties that will be skipped in serialization</param>
     public IgnorePropertiesContractResolver(IEnumerable<PropertyInfo> properties)
     {
         _properties = properties;

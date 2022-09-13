@@ -1,21 +1,23 @@
 using System.Collections;
 using System.Collections.Specialized;
-using System.Diagnostics.Contracts;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Web;
 using Microsoft.AspNetCore.SignalR.Client;
-using Newtonsoft.Json;
 using StudentApplication.Common.Attributes;
 using StudentApplication.Common.Utils;
-using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace StudentApplication.Client.HttpRepository;
 
+/// <summary>
+///   A <see cref="IEnumerable{T}"/> continuously communicating with the REST server, listening for updates via SignalR,
+///   automatically fetching new data when required and informing the server about changes.
+/// </summary>
 public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionChanged
     where T : IModel<TKey>
     where TKey : IEquatable<TKey>
 {
+    // Internal cache
     private readonly List<T> _list = new();
 
     private readonly HttpClient _client;
@@ -29,12 +31,19 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     private string _query = string.Empty;
     private int _items = 0;
 
+    /// <summary>
+    ///   Total amount of items available on the server.
+    /// </summary>
     public int Count => _items;
-    public bool IsReadOnly => false;
     
+    /// <summary>
+    ///   Event that gets fired upon changes to the list
+    /// </summary>
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
-
+    /// <summary>
+    ///   Currently active list
+    /// </summary>
     public int Page
     {
         get => _page;
@@ -49,26 +58,14 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await FetchAsync(page + 1);
     }
 
-    public async Task NextPage()
-    {
-        await SetPageAsync(Page + 1);
-    }
-    
-    public async Task PrevPage()
-    {
-        if (Page == 0)
-            return;
-        await SetPageAsync(Page - 1);
-    }
-
+    /// <summary>
+    ///   Items per page
+    /// </summary>
     public int PageLength
     {
         get => _pageLength;
         set => SetPageLengthAsync(value).Wait();
     }
-
-    // Integer round up
-    public int Pages => (Count - 1) / PageLength + 1;
 
     public async Task SetPageLengthAsync(int pageLength)
     {
@@ -77,7 +74,16 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await FetchAsync();
         await FetchAsync(Page + 1);
     }
+    
+    /// <summary>
+    ///   Total amount of pages
+    /// </summary>
+    // Integer round up
+    public int Pages => (Count - 1) / PageLength + 1;
 
+    /// <summary>
+    ///   Sort by this attribute name. Must be tagged with <see cref="RestSearchableAttribute"/>
+    /// </summary>
     public string SortBy => _sortBy;
 
     public bool SortAscending => _sortAscending;
@@ -89,6 +95,9 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await Reload();
     }
 
+    /// <summary>
+    ///   Current search query. Debounce before setting this.
+    /// </summary>
     public string Query
     {
         get => _query;
@@ -100,27 +109,22 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         _query = query;
         await Reload();
     }
-
-    public T this[int index]
-    {
-        get
-        {
-            if (index > PageLength || index < 0)
-                throw new IndexOutOfRangeException();
-            return _list[Page * PageLength + index];
-        }
-    }
     
     public RestData(HttpClient client, NotificationHub notificationHub)
     {
         _hub = notificationHub;
         _client = client;
         _endpoint = typeof(T).GetCustomAttribute<RestEndpointAttribute>()?.Url ?? throw new ArgumentException("Generic type T must have a RestEndpoint attribute");
+        
         notificationHub.HubConnection.On<T>($"{_endpoint}_update", ItemUpdated);
         notificationHub.HubConnection.On<T>($"{_endpoint}_create", async item => await ItemAdded(item));
         notificationHub.HubConnection.On<TKey>($"{_endpoint}_delete", async id => await ItemDeleted(id));
     }
 
+    /// <summary>
+    ///   Call this method upon creation!
+    ///   Initialized connections and fetches initial data.
+    /// </summary>
     public async Task InitAsync()
     {
         await _hub.ConnectAsync();
@@ -128,12 +132,17 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await _hub.JoinGroupAsync(_endpoint);
     }
 
+    /// <summary>
+    ///   The server informed me that an item was deleted!
+    /// </summary>
     private async Task ItemDeleted(TKey key)
     {
+        _items--;
         var index = _list.FindIndex(i => i.Id.Equals(key));
         if (index == -1)
             return;
 
+        // Item found in cache
         var oldItem = Get(index);
         _list.RemoveAt(index);
         CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItem, index));
@@ -141,22 +150,33 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await FetchAsync(page);
     }
     
+    /// <summary>
+    ///   The server informed me that an item was updated!
+    /// </summary>
     private void ItemUpdated(T item)
     {
         var index = _list.FindIndex(i => i.Id.Equals(item.Id));
         if (index == -1)
             return;
+        
+        // Item found in cache
         var oldItem = _list[index];
         _list[index] = item;
 
         CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, item, oldItem, index));
     }
     
+    /// <summary>
+    ///   The server informed me that an item was added!
+    /// </summary>
     private async Task ItemAdded(T item)
     {
+        _items++;
+        // Check if the added item matches the current search term
         if (!MatchesQuery(item))
             return;
 
+        // Compare the item with the last item of the previous page until the next page
         for (var i = Page == 0 ? 0 : Page * PageLength - 1; i < (Page + 2) * PageLength; i++)
         {
             var currentItem = Get(i);
@@ -171,17 +191,19 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
 
             var compare = Compare(item, currentItem);
 
-            // Before current page
             if (compare < 0 && i < Page * PageLength && Page > 0)
             {
-                // Invalidate the previous page
+                // Item is before the current page
                 // We don't want to add the item to the previous page because that would shift the data viewed by the user
+                
+                // Instead, we just reload the previous page
                 await FetchAsync(Page - 1);
                 return;
             }
 
             if (compare < 0)
             {
+                // We found a comfortable slot for the item
                 _list.Insert(i, item);
                 CollectionChanged?.Invoke(this,
                     new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, i));
@@ -190,6 +212,9 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         }
     }
 
+    /// <summary>
+    ///   Does the item match the current search term?
+    /// </summary>
     private bool MatchesQuery(T item)
     {
         if (string.IsNullOrWhiteSpace(Query))
@@ -205,6 +230,9 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         return SortAscending ? value : -value;
     }
     
+    /// <summary>
+    ///   All searchable properties of T
+    /// </summary>
     private static IEnumerable<PropertyInfo> SearchableProperties =>
          typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.GetCustomAttribute<RestSearchableAttribute>() != null);
@@ -231,61 +259,64 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         return GetEnumerator();
     }
 
+    /// <summary>
+    ///   We leave the notification group upon disposing. Goodbye!
+    /// </summary>
     public async void Dispose()
     {
         GC.SuppressFinalize(this);
         await _hub.LeaveGroupAsync(_endpoint);
     }
 
+    /// <summary>
+    ///   Helper that gets an item at an index or returns default
+    /// </summary>
     private T? Get(int i)
     {
+        if (i < 0) return default;
         return i >= _list.Count ? default : _list[i];
     }
 
-    private async Task FetchAsync(int? page = null)
+    /// <summary>
+    ///   Fetches a page from the server utilizing previously defined properties.
+    /// </summary>
+    /// <param name="pageToLoad">The page to be fetched. Defaults to the current page</param>
+    private async Task FetchAsync(int? pageToLoad = null)
     {
-        if (page < 0)
+        if (pageToLoad < 0)
             return;
         
-        var p = page ?? Page;
+        var page = pageToLoad ?? Page;
+        var firstItemIndex = page * PageLength;
 
-        if (Enumerable.Range(p * PageLength, PageLength).All(i => Get(i) != null))
+        // Do not fetch if we already have all info
+        if (Enumerable.Range(firstItemIndex, PageLength).All(i => Get(i) != null))
             return;
         
         var uriBuilder = new UriBuilder(_client.BaseAddress!+_endpoint);
         var getQuery = HttpUtility.ParseQueryString(uriBuilder.Query);
-        getQuery["page"] = p.ToString();
+        getQuery["page"] = page.ToString();
         getQuery["pageLength"] = PageLength.ToString();
         getQuery["sortBy"] = SortBy;
         getQuery["ascending"] = SortAscending.ToString();
         getQuery["query"] = Query;
         uriBuilder.Query = getQuery.ToString();
-        var result = await ReadResultAsync<PaginationListResult<T>>(await _client.GetAsync(uriBuilder.ToString()));
+        var result = await JsonUtils.ReadResultAsync<PaginationListResult<T>>(await _client.GetAsync(uriBuilder.ToString()));
         _items = result.TotalItems;
         for (var i = 0; i < result.Items.Count; i++)
         {
-            if (Get(i+p*PageLength) == null)
-                _list.Insert(i+p*PageLength, result.Items[i]);
+            // Update or insert
+            if (Get(firstItemIndex + i) == null)
+                _list.Insert(firstItemIndex + i, result.Items[i]);
             else
-                _list[i + p * PageLength] = result.Items[i];
+                _list[firstItemIndex + i] = result.Items[i];
         }
-        CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, result.Items, p*PageLength));
+        CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, result.Items, page*PageLength));
     }
     
-    [Pure]
-    private async Task<TResp> ReadResultAsync<TResp>(HttpResponseMessage response)
-    {
-        response.EnsureSuccessStatusCode();
-        var stream = await response.Content.ReadAsStreamAsync();
-        using StreamReader sr = new(stream);
-        using JsonReader reader = new JsonTextReader(sr);
-        JsonSerializer serializer = new();
-        var obj = serializer.Deserialize<TResp>(reader);
-        if (obj == null)
-            throw new HttpRequestException("Could not deserialize JSON");
-        return obj;
-    }
-
+    /// <summary>
+    ///   Fetches the current, previous and next page.
+    /// </summary>
     private async Task Reload()
     {
         _list.Clear();
@@ -294,16 +325,25 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await FetchAsync(Page + 1);
     }
 
+    /// <summary>
+    ///   Add an item to the list. Others will be informed.
+    /// </summary>
     public async Task Add(T item)
     {
-        item.Id = await ReadResultAsync<TKey>(await _client.PostAsync(_endpoint, JsonContent.Create(item)));
+        item.Id = await JsonUtils.ReadResultAsync<TKey>(await _client.PostAsync(_endpoint, JsonContent.Create(item)));
     }
 
+    /// <summary>
+    ///   Removes an item from the list. Others will be informed.
+    /// </summary>
     public async Task<bool> Remove(TKey item)
     {
         return (await _client.DeleteAsync($"{_endpoint}/{item}")).IsSuccessStatusCode;
     }
 
+    /// <summary>
+    ///   Updates an item in the list. Others will be informed.
+    /// </summary>
     public async Task<bool> Update(T item)
     {
         return (await _client.PutAsync($"{_endpoint}", JsonContent.Create(item))).IsSuccessStatusCode;

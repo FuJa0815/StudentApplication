@@ -1,5 +1,6 @@
 @using StudentApplication.Common.Models
 @using Newtonsoft.Json
+@using StudentApplication.Common.Utils
 @inject HttpClient Http
 <MudDialog>
     <DialogContent>
@@ -12,16 +13,14 @@
 </MudDialog>
 
 @code {
+    /// <summary>
+    ///   The student to apply courses to
+    /// </summary>
     [Parameter]
     public Student Student { get; set; } = new();
 
     [Parameter]
-    public HashSet<Course>? SelectedCourses
-    {
-        get;
-        set;
-    }
-    private HashSet<Course>? OriginalSelectedCourses { get; set; }
+    public HashSet<Course>? SelectedCourses { get; set; }
 
     private async Task OnSelectedCoursesChanged(HashSet<Course> values)
     {
@@ -32,6 +31,11 @@
     
     [Parameter]
     public EventCallback<HashSet<Course>> SelectedCoursesChanged { get; set; }
+    
+    /// <summary>
+    ///   The original selected courses are kept for comparison upon sending
+    /// </summary>
+    private HashSet<Course>? OriginalSelectedCourses { get; set; }
 
     [CascadingParameter]
     private MudDialogInstance MudDialog { get; set; } = null!;
@@ -43,14 +47,7 @@
         if (firstRender)
         {
             var response = await Http.GetAsync("students/" + Student.Id);
-            response.EnsureSuccessStatusCode();
-            var stream = await response.Content.ReadAsStreamAsync();
-            using StreamReader sr = new(stream);
-            using JsonReader reader = new JsonTextReader(sr);
-            JsonSerializer serializer = new();
-            var obj = serializer.Deserialize<Student>(reader);
-            if (obj == null)
-                throw new HttpRequestException("Could not deserialize JSON");
+            var obj = await JsonUtils.ReadResultAsync<Student>(response);
             OriginalSelectedCourses = obj.Courses;
             await OnSelectedCoursesChanged(new HashSet<Course>(OriginalSelectedCourses));
         }

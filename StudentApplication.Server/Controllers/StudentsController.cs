@@ -8,8 +8,14 @@ using StudentApplication.Server.Services;
 
 namespace StudentApplication.Server.Controllers;
 
+/// <summary>
+///   Endpoints for students
+/// </summary>
 public class StudentsController : RestController<Student, int>
 {
+    /// <summary>
+    ///   Additional services besides normal CRUD operations for students are defined in this service.
+    /// </summary>
     private readonly IStudentsService _studentsService;
     public StudentsController(IRestService<Student, int> service, IStudentsService studentsService) : base(service)
     {

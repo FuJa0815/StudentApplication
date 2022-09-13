@@ -1,9 +1,7 @@
 using System.Linq.Dynamic.Core;
 using System.Reflection;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.DynamicLinq;
 using StudentApplication.Common.Attributes;
 using StudentApplication.Common.Utils;
 using StudentApplication.Server.Data;
@@ -16,7 +14,7 @@ public interface IRestService<T, TKey>
     where TKey : IEquatable<TKey>
 {
     Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; }
-    Func<DbSet<T>, IQueryable<T>> Includes { get; set; }
+    Func<DbSet<T>, IQueryable<T>> QueryableFromModel { get; set; }
     Func<string> GetControllerName { get; set; }
     Task<T?> GetOne(string id);
     Task<bool> Delete(string id);
@@ -29,14 +27,16 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
+    // Functions set by the RestController
+    public Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; } = null!;
+    public Func<DbSet<T>, IQueryable<T>> QueryableFromModel { get; set; } = null!;
+    public Func<string> GetControllerName { get; set; }
+    
     private IHubContext<NotificationHub> Hub { get; }
     private ApplicationDbContext Db { get; }
-    public Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; } = null!;
-    public Func<DbSet<T>, IQueryable<T>> Includes { get; set; } = null!;
-    public Func<string> GetControllerName { get; set; }
     private string ControllerName => GetControllerName();
     private DbSet<T> Model => ModelFromDb(Db);
-    private IQueryable<T> WithIncludes => Includes(Model);
+    private IQueryable<T> WithIncludes => QueryableFromModel(Model);
     private ILogger Logger { get; }
 
     public RestService(IHubContext<NotificationHub> hub, ApplicationDbContext db, ILogger<RestService<T, TKey>> logger)
@@ -48,6 +48,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
 
     public async Task<T?> GetOne(string id)
     {
+        // Fetch model with any key
         var model = await ServiceHelper<T>.GetByAnyIdAsync(WithIncludes, id);
         if (model == null)
         {
@@ -123,6 +124,9 @@ public class RestService<T, TKey> : IRestService<T, TKey>
          typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.GetCustomAttribute<RestSortableAttribute>() != null);
     
+    /// <summary>
+    ///   Searches in all fields marked with the <see cref="RestSearchableAttribute"/>
+    /// </summary>
     private IQueryable<T> Search(string? term)
     {
         if (string.IsNullOrWhiteSpace(term))

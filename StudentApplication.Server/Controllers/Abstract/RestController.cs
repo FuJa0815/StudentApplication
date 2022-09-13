@@ -1,16 +1,19 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using StudentApplication.Common.Models;
 using StudentApplication.Common.Utils;
 using StudentApplication.Server.Data;
 using StudentApplication.Server.Services;
 
 namespace StudentApplication.Server.Controllers.Abstract;
 
+/// <summary>
+///   Implements GET (by key and multiple), POST, PUT, DELETE methods for a given model.
+/// </summary>
+/// <typeparam name="T">The model</typeparam>
+/// <typeparam name="TKey">The primary key type. Alternate REST-keys can be defined via the <see cref="StudentApplication.Common.Attributes.RestKeyAttribute"/> attribute</typeparam>
 [ApiController]
 [Route("api/v1/[controller]")]
 public abstract class RestController<T, TKey> : Controller
@@ -22,23 +25,41 @@ public abstract class RestController<T, TKey> : Controller
     where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
+    /// <summary>
+    ///   Defines the DbSet used for this endpoint
+    /// </summary>
     [ApiExplorerSettings(IgnoreApi = true)]
     public abstract DbSet<T> ModelFromDb(ApplicationDbContext db);
 
+    /// <summary>
+    ///   Preprocessing, like Including, can be made here
+    /// </summary>
     [ApiExplorerSettings(IgnoreApi = true)]
     public virtual IQueryable<T> QueryableFromModel(DbSet<T> model) => model;
 
+    /// <summary>
+    ///   The main service for this class
+    /// </summary>
     private IRestService<T, TKey> Service { get; }
 
-    protected RestController(IRestService<T, TKey> service)
+    public RestController(IRestService<T, TKey> service)
     {
+        // Some functions need to be injected
         service.GetControllerName = () => ControllerContext.ActionDescriptor.ControllerName;
         service.ModelFromDb = ModelFromDb;
-        service.Includes = QueryableFromModel;
+        service.QueryableFromModel = QueryableFromModel;
+        
         Service = service;
     }
     
+    /// <summary>
+    ///   Expressions that define properties that will be skipped in serialization of a single model
+    /// </summary>
     protected virtual Expression<Func<T, object>>[] GetOneIgnoreProperties { get; } = Array.Empty<Expression<Func<T, object>>>();
+    
+    /// <summary>
+    ///   Expressions that define properties that will be skipped in serialization of a list of model
+    /// </summary>
     protected virtual Expression<Func<T, object>>[] GetListIgnoreProperties { get; } = Array.Empty<Expression<Func<T, object>>>();
     Expression<Func<T, object>>[] IUpdatableController<T>.IgnoreProperties => GetOneIgnoreProperties;
     Expression<Func<T, object>>[] IOneFetchableController<T>.IgnoreProperties => GetOneIgnoreProperties;
@@ -91,6 +112,10 @@ public abstract class RestController<T, TKey> : Controller
         return NoContent();
     }
     
+    /// <summary>
+    ///   Utilizes the <see cref="IgnorePropertiesContractResolver"/> to skip unwanted properties without the need for
+    ///   DTO for everything.
+    /// </summary>
     private static JsonResult ToJson(object obj, params Expression<Func<T, object>>[] expressions)
     {
         var properties = expressions.Select(exp =>

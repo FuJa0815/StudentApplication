@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace StudentApplication.Client.HttpRepository;
 
+/// <summary>
+///   Wrapper for a SignalR hub for auto-joining groups upon reconnecting
+/// </summary>
 public class NotificationHub
 {
     private readonly HashSet<string> _joinedGroups = new();

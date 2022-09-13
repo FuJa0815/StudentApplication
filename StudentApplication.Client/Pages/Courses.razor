@@ -18,12 +18,15 @@
 {
     private HashSet<Course> SelectedCourses { get; set; } = new();
 
-    private void ApplyDateRange(DateRange? range, Course context)
+    private static void ApplyDateRange(DateRange? range, Course context)
     {
         context.StartsAt = range?.Start ?? DateTime.Today;
         context.EndsAt = range?.End ?? DateTime.Today;
     }
 
+    /// <summary>
+    ///   Shows a popup for each selected course
+    /// </summary>
     private async Task AddStudentsToCoursesAsync()
     {
         foreach (var course in SelectedCourses)

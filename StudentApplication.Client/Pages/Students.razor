@@ -17,6 +17,9 @@
 {
     private HashSet<Student> SelectedStudents { get; set; } = new();
 
+    /// <summary>
+    ///   Shows a popup for each selected student
+    /// </summary>
     private async Task AddCoursesToStudentsAsync()
     {
         foreach (var student in SelectedStudents)

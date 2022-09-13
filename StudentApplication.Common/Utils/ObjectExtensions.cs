@@ -1,3 +1,5 @@
+// Code by Burtsev Alexey https://github.com/Burtsev-Alexey/net-object-deep-copy, modified
+
 using System.Reflection;
 using System.ArrayExtensions;
 

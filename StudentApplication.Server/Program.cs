@@ -3,7 +3,6 @@ using StudentApplication.Server.Attributes;
 using StudentApplication.Server.Data;
 using StudentApplication.Server.Hub;
 using StudentApplication.Server.Services;
-using StudentApplication.Server.Utils;
 
 namespace StudentApplication.Server;
 
@@ -18,7 +17,6 @@ public static class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
 
-// Add services to the container.
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlite(connectionString));
@@ -28,11 +26,8 @@ public static class Program
 
         builder.Services.AddControllers(mvc =>
         {
-            mvc.Conventions.Add(new ControllerNameAttributeConvention());
-            mvc.InputFormatters.Insert(0, MyJsonPatchInputFormatter.GetJsonPatchInputFormatter());
-        }).AddNewtonsoftJson(options =>
-        {
-        });
+            mvc.Conventions.Add(new RestEndpointAttributeConvention());
+        }).AddNewtonsoftJson();
         builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
         builder.Services.AddEndpointsApiExplorer();

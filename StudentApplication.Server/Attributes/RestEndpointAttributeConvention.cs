@@ -6,18 +6,25 @@ using StudentApplication.Server.Controllers.Abstract;
 
 namespace StudentApplication.Server.Attributes;
 
-public class ControllerNameAttributeConvention : IControllerModelConvention
+/// <summary>
+///   Defines a controller naming convention based upon the <see cref="RestEndpointAttribute"/> on the model
+/// </summary>
+public class RestEndpointAttributeConvention : IControllerModelConvention
 {
     public void Apply(ControllerModel controller)
     {
-        var attribute = GetRestControllerType(controller.ControllerType)?.GenericTypeArguments?.First()?.GetCustomAttribute<RestEndpointAttribute>();
+        var attribute = GetRestControllerType(controller.ControllerType)?.GenericTypeArguments.First().GetCustomAttribute<RestEndpointAttribute>();
+        // No special controller handling is done when no RestEndpointAttribute was found
         if (attribute == null)
             return;
         controller.ControllerName = attribute.Url;
     }
 
+    /// <summary>
+    ///   Recursive method that looks for an inherited <see cref="RestController{T,TKey}"/> and returns it.
+    /// </summary>
     [Pure]
-    private Type? GetRestControllerType(Type? t)
+    private static Type? GetRestControllerType(Type? t)
     {
         if (t == null)
             return null;

@@ -24,21 +24,13 @@ public class Course : IModel<int>
 
     public virtual HashSet<Student> Students { get; set; } = new();
 
-    protected bool Equals(Course other)
-    {
-        return Id == other.Id;
-    }
-
     public override bool Equals(object? obj)
     {
         if (ReferenceEquals(null, obj)) return false;
         if (ReferenceEquals(this, obj)) return true;
         if (obj.GetType() != this.GetType()) return false;
-        return Equals((Course)obj);
+        return Id == ((Course)obj).Id;
     }
 
-    public override int GetHashCode()
-    {
-        return Id;
-    }
+    public override int GetHashCode() => Id;
 }
