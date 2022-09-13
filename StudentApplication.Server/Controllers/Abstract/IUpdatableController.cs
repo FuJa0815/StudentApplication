@@ -11,8 +11,4 @@ public interface IUpdatableController<T>
 
     [HttpPut]
     public Task<ActionResult> Override([FromBody] T body);
-
-
-    [HttpPatch("{id}")]
-    public Task<ActionResult<T>> Patch([FromRoute] string id, [FromBody] JsonPatchDocument<T> patch);
 }

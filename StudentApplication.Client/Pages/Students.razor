@@ -1,13 +1,29 @@
 @page "/Students"
 @using StudentApplication.Common.Models
-@using System.ComponentModel.DataAnnotations
+@inject IDialogService DialogService
 
 <PageTitle>Students</PageTitle>
 
-<PaginatedTable T="Student" TKey="int" Title="Students">
+<PaginatedTable T="Student" TKey="int" Title="Students" @bind-SelectedItems="SelectedStudents">
     <Edit>
         <MudTd><MudTextField Placeholder="Email" @bind-Value="@context.Email" For="@(()=>context.Email)" MaxLength="254" /></MudTd>
         <MudTd><MudTextField Placeholder="Firstname" @bind-Value="@context.FirstName" For="@(()=>context.FirstName)" /></MudTd>
         <MudTd><MudTextField Placeholder="Lastname" @bind-Value="@context.LastName" For="@(()=>context.LastName)" /></MudTd>
     </Edit>
 </PaginatedTable>
+<MudIconButton Disabled="SelectedStudents.Count == 0" Icon="@Icons.Filled.PersonAdd" OnClick="AddCoursesToStudentsAsync"></MudIconButton>
+
+@code
+{
+    private HashSet<Student> SelectedStudents { get; set; } = new();
+
+    private async Task AddCoursesToStudentsAsync()
+    {
+        foreach (var student in SelectedStudents)
+        {
+            var parameters = new DialogParameters { { "Student", student } };
+            var dialogReference = DialogService.Show<AddCoursesToStudentDialog>($"Enroll {student.FirstName} {student.LastName} in courses", parameters);
+            await dialogReference.Result;
+        }
+    }
+}

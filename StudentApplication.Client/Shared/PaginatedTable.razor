@@ -11,7 +11,9 @@
             RowsPerPageChanged="async i => await Data.SetPageLengthAsync(i)"
             Bordered="true"
             MultiSelection="true"
-            @bind-SelectedItems="_selectedItems"
+            ReadOnly="@ReadOnly"
+            SelectedItems="@SelectedItems"
+            SelectedItemsChanged="OnSelectedItemsChanged"
             SortLabel="Sort By"
             CommitEditTooltip="Commit Edit"
             RowEditPreview="BackupItem"
@@ -55,23 +57,29 @@
         @Edit(context)
     </RowEditingTemplate>
 </MyMudTable>
-<MudIconButton Icon="@Icons.Filled.Delete" Disabled="_selectedItems.Count == 0" OnClick="Delete"/>
-@if (_newItem == null)
+@if (!ReadOnly)
 {
-    <MudIconButton Icon="@Icons.Filled.Add" OnClick="ShowNewForm"/>
-}
-else
-{
-    <MudForm @bind-IsValid="_newItemValid">
-        @Edit(_newItem)
-    </MudForm>
-    
-    <MudIconButton Icon="@Icons.Filled.Check" Disabled="!_newItemValid" OnClick="AddNewItemAsync"/>
+    <MudIconButton Icon="@Icons.Filled.Delete" Disabled="SelectedItems.Count == 0" OnClick="Delete"/>
+    @if (_newItem == null)
+    {
+        <MudIconButton Icon="@Icons.Filled.Add" OnClick="ShowNewForm"/>
+    }
+    else
+    {
+        <MudForm @bind-IsValid="_newItemValid">
+            @Edit(_newItem)
+        </MudForm>
+        
+        <MudIconButton Icon="@Icons.Filled.Check" Disabled="!_newItemValid" OnClick="AddNewItemAsync"/>
+    }
 }
 
 
 @code {
     private T? _itemBeforeEdit = null;
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
     
     [Parameter]
     public string Title { get; set; } = string.Empty;
@@ -82,11 +90,26 @@ else
     [Parameter]
     public RenderFragment<T> Edit { get; set; }
 
+    [Parameter]
+    public HashSet<T> SelectedItems 
+    {
+        get;
+        set; 
+    } = new();
+     
+    [Parameter]
+    public EventCallback<HashSet<T>> SelectedItemsChanged { get; set; }
+
+    private async Task OnSelectedItemsChanged(HashSet<T> values)
+    {
+        SelectedItems = values;
+        await SelectedItemsChanged.InvokeAsync(values);
+        StateHasChanged();
+    }
+
     private T? _newItem;
     private bool _newItemValid;
 
-    private HashSet<T> _selectedItems = new();
-    
     private void ShowNewForm()
     {
         _newItem = (T)Activator.CreateInstance(typeof(T))!;
@@ -100,11 +123,11 @@ else
 
     private async Task Delete()
     {
-        foreach (var item in _selectedItems)
+        foreach (var item in SelectedItems)
         {
             await Data.Remove(item.Id);
         }
-        _selectedItems.Clear();
+        SelectedItems.Clear();
     }
 
     IEnumerable<PropertyInfo> Properties => typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)

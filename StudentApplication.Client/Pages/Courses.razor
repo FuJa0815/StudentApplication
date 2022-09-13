@@ -1,22 +1,36 @@
 ﻿@page "/"
 @page "/courses"
 @using StudentApplication.Common.Models
+@inject IDialogService DialogService
 
 <PageTitle>Courses</PageTitle>
 
-<PaginatedTable T="Course" TKey="int" Title="Courses">
+<PaginatedTable T="Course" TKey="int" Title="Courses" @bind-SelectedItems="SelectedCourses">
     <Edit>
         <MudTd><MudTextField Placeholder="Name" @bind-Value="@context.Name" For="@(()=>context.Name)" /></MudTd>
-        <MudTd colspan="2"><MudDateRangePicker DateRange="@(new DateRange(context.StartsAt, context.EndsAt))"  DateRangeChanged="d => ApplyDateRange(d, context)" MinDate="DateTime.Today"/></MudTd>
-        <MudTd><MudNumericField Placeholder="Price" @bind-Value="@context.Price" For="@(()=>context.Price)" Required/></MudTd>
+        <MudTd colspan="2"><MudDateRangePicker DateRange="@(new DateRange(context.StartsAt, context.EndsAt))" DateRangeChanged="d => ApplyDateRange(d, context)" MinDate="DateTime.Today"/></MudTd>
+        <MudTd><MudNumericField Placeholder="Price" @bind-Value="@context.Price" For="@(()=>context.Price)"/></MudTd>
     </Edit>
 </PaginatedTable>
+<MudIconButton Disabled="SelectedCourses.Count == 0" Icon="@Icons.Filled.PersonAdd" OnClick="AddStudentsToCoursesAsync"></MudIconButton>
 
 @code
-{ 
+{
+    private HashSet<Course> SelectedCourses { get; set; } = new();
+
     private void ApplyDateRange(DateRange? range, Course context)
     {
         context.StartsAt = range?.Start ?? DateTime.Today;
         context.EndsAt = range?.End ?? DateTime.Today;
+    }
+
+    private async Task AddStudentsToCoursesAsync()
+    {
+        foreach (var course in SelectedCourses)
+        {
+            var parameters = new DialogParameters { { "Course", course } };
+            var dialogReference = DialogService.Show<AddStudentsToCourseDialog>("Add students to " + course.Name, parameters);
+            await dialogReference.Result;
+        }
     }
 }

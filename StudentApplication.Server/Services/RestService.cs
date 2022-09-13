@@ -5,9 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.DynamicLinq;
 using StudentApplication.Common.Attributes;
-using StudentApplication.Common.Models;
 using StudentApplication.Common.Utils;
-using StudentApplication.Server.Controllers.Abstract;
 using StudentApplication.Server.Data;
 using StudentApplication.Server.Hub;
 
@@ -18,13 +16,13 @@ public interface IRestService<T, TKey>
     where TKey : IEquatable<TKey>
 {
     Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; }
+    Func<DbSet<T>, IQueryable<T>> Includes { get; set; }
     Func<string> GetControllerName { get; set; }
     Task<T?> GetOne(string id);
     Task<bool> Delete(string id);
     Task<PaginationListResult<T>?> Get(int page, int pageLength, string? sortBy, bool ascending, string? query);
     Task<TKey> Create(T body);
     Task Override(T body);
-    Task<T?> Patch(string id, JsonPatchDocument<T> patch);
 }
 
 public class RestService<T, TKey> : IRestService<T, TKey>
@@ -34,9 +32,11 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     private IHubContext<NotificationHub> Hub { get; }
     private ApplicationDbContext Db { get; }
     public Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; } = null!;
+    public Func<DbSet<T>, IQueryable<T>> Includes { get; set; } = null!;
     public Func<string> GetControllerName { get; set; }
     private string ControllerName => GetControllerName();
     private DbSet<T> Model => ModelFromDb(Db);
+    private IQueryable<T> WithIncludes => Includes(Model);
     private ILogger Logger { get; }
 
     public RestService(IHubContext<NotificationHub> hub, ApplicationDbContext db, ILogger<RestService<T, TKey>> logger)
@@ -48,7 +48,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
 
     public async Task<T?> GetOne(string id)
     {
-        var model = await GetByAnyIdAsync(id);
+        var model = await ServiceHelper<T>.GetByAnyIdAsync(WithIncludes, id);
         if (model == null)
         {
             Logger.LogWarning($"{ControllerName} with id {id} not found");
@@ -62,7 +62,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
 
     public async Task<bool> Delete(string id)
     {
-        var model = await GetByAnyIdAsync(id);
+        var model = await ServiceHelper<T>.GetByAnyIdAsync(WithIncludes, id);
         if (model == null)
         {
             Logger.LogWarning($"{ControllerName} with id {id} not found");
@@ -107,7 +107,6 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     {
         Logger.LogInformation($"{ControllerName} with id {body.Id} overridden");
 
-        Model.Attach(body);
         Db.Entry(body).State = EntityState.Modified;
         
         await Db.SaveChangesAsync();
@@ -116,29 +115,6 @@ public class RestService<T, TKey> : IRestService<T, TKey>
             .SendCoreAsync($"{ControllerName}_update", new object?[] { body });
     }
 
-    public async Task<T?> Patch(string id, JsonPatchDocument<T> patch)
-    {
-        var entity = await GetByAnyIdAsync(id);
-        if (entity == null)
-        {
-            Logger.LogWarning($"{ControllerName} with id {id} not found");
-            return null;
-        }
-
-        Logger.LogInformation($"{ControllerName} with id {id} overridden");
-        
-        patch.ApplyTo(entity);
-        Db.Entry(entity).State = EntityState.Modified;
-        await Db.SaveChangesAsync();
-        await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{id}")
-            .SendCoreAsync($"{ControllerName}_update", new object[] { entity });
-        return entity;
-    }
-
-    private static IEnumerable<PropertyInfo> KeysProperties =>
-         typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.GetCustomAttribute<RestKeyAttribute>() != null);
-    
     private static IEnumerable<PropertyInfo> SearchableProperties =>
          typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.GetCustomAttribute<RestSearchableAttribute>() != null);
@@ -147,36 +123,12 @@ public class RestService<T, TKey> : IRestService<T, TKey>
          typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.GetCustomAttribute<RestSortableAttribute>() != null);
     
-    private async Task<T?> GetByAnyIdAsync(object id)
-    {
-        T? model = null;
-        foreach (var keyProperty in KeysProperties)
-        {
-            object? key;
-            try
-            {
-                key = Convert.ChangeType(id, keyProperty.PropertyType);
-            }
-            catch (Exception e) when(e is InvalidCastException or FormatException)
-            {
-                // Key not applicable
-                continue;
-            }
-
-            model = await Model.FirstOrDefaultAsync(keyProperty.Name + "= @0", key);
-            if (model != null)
-                break;
-        }
-
-        return model;
-    }
-    
     private IQueryable<T> Search(string? term)
     {
         if (string.IsNullOrWhiteSpace(term))
-            return Model;
+            return WithIncludes;
         
         var str = string.Join(" || ", SearchableProperties.Select(p => $"{p.Name}.ToLower().Contains(@0)"));
-        return Model.Where(str, term.ToLower());
+        return WithIncludes.Where(str, term.ToLower());
     }
 }

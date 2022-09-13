@@ -1,9 +1,9 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text.Json;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using StudentApplication.Common.Models;
 using StudentApplication.Common.Utils;
 using StudentApplication.Server.Data;
@@ -24,13 +24,17 @@ public abstract class RestController<T, TKey> : Controller
 {
     [ApiExplorerSettings(IgnoreApi = true)]
     public abstract DbSet<T> ModelFromDb(ApplicationDbContext db);
-    
+
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public virtual IQueryable<T> QueryableFromModel(DbSet<T> model) => model;
+
     private IRestService<T, TKey> Service { get; }
 
     protected RestController(IRestService<T, TKey> service)
     {
         service.GetControllerName = () => ControllerContext.ActionDescriptor.ControllerName;
         service.ModelFromDb = ModelFromDb;
+        service.Includes = QueryableFromModel;
         Service = service;
     }
     
@@ -86,15 +90,6 @@ public abstract class RestController<T, TKey> : Controller
         await Service.Override(body);
         return NoContent();
     }
-
-    [HttpPatch("{id}")]
-    public virtual async Task<ActionResult<T>> Patch([FromRoute] string id, [FromBody] JsonPatchDocument<T> patch)
-    {
-        var newObj = await Service.Patch(id, patch);
-        if (newObj == null)
-            return NotFound("Id not found");
-        return ToJson(newObj, GetOneIgnoreProperties);
-    }
     
     private static JsonResult ToJson(object obj, params Expression<Func<T, object>>[] expressions)
     {
@@ -103,9 +98,9 @@ public abstract class RestController<T, TKey> : Controller
              throw new ArgumentException($"Expression '{exp}' does not refer to a property")).Member as PropertyInfo ??
             throw new ArgumentException($"Expression '{exp}' does not refer to a property"));
         
-        return new JsonResult(obj, new JsonSerializerOptions
+        return new JsonResult(obj, new JsonSerializerSettings
         {
-            Converters = { new IgnorePropertiesConverter<T>(properties) }
+            ContractResolver = new IgnorePropertiesContractResolver(properties)
         });
     }
 }

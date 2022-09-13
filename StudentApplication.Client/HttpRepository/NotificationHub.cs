@@ -28,7 +28,7 @@ public class NotificationHub
 
     public async Task ConnectAsync()
     {
-        if (HubConnection?.State == HubConnectionState.Connected)
+        if (HubConnection.State != HubConnectionState.Disconnected)
             return;
         
         await HubConnection.StartAsync();

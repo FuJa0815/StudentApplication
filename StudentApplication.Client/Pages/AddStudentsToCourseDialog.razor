@@ -1,0 +1,75 @@
+@using StudentApplication.Common.Models
+@using Newtonsoft.Json
+@inject HttpClient Http
+<MudDialog>
+    <DialogContent>
+        <PaginatedTable T="Student" TKey="int" Title="Students" ReadOnly="true" SelectedItems="@SelectedStudents" SelectedItemsChanged="OnSelectedStudentsChanged"/>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudBadge Color="Color.Primary" OnClick="AddStudentsToCourses">Add</MudBadge>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Course Course { get; set; } = new();
+
+    [Parameter]
+    public HashSet<Student>? SelectedStudents
+    {
+        get;
+        set;
+    }
+    private HashSet<Student>? OriginalSelectedStudents { get; set; }
+
+    private async Task OnSelectedStudentsChanged(HashSet<Student> values)
+    {
+        SelectedStudents = values;
+        await SelectedStudentsChanged.InvokeAsync(values);
+        StateHasChanged();
+    }
+    
+    [Parameter]
+    public EventCallback<HashSet<Student>> SelectedStudentsChanged { get; set; }
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var response = await Http.GetAsync("courses/" + Course.Id);
+            response.EnsureSuccessStatusCode();
+            var stream = await response.Content.ReadAsStreamAsync();
+            using StreamReader sr = new(stream);
+            using JsonReader reader = new JsonTextReader(sr);
+            JsonSerializer serializer = new();
+            var obj = serializer.Deserialize<Course>(reader);
+            if (obj == null)
+                throw new HttpRequestException("Could not deserialize JSON");
+            OriginalSelectedStudents = obj.Students;
+            await OnSelectedStudentsChanged(new HashSet<Student>(OriginalSelectedStudents));
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task AddStudentsToCourses()
+    {
+        if (OriginalSelectedStudents == null) return;
+        if (SelectedStudents == null) return;
+        foreach (var student in OriginalSelectedStudents.Where(student => !SelectedStudents.Contains(student)))
+        {
+            await Http.DeleteAsync($"courses/{Course.Id}/students/{student.Id}");
+        }
+        foreach (var student in SelectedStudents.Where(student => !OriginalSelectedStudents.Contains(student)))
+        {
+            await Http.PostAsync($"courses/{Course.Id}/students/{student.Id}", null);
+        }
+        MudDialog.Close(DialogResult.Ok(true));
+        OriginalSelectedStudents = new HashSet<Student>(SelectedStudents);
+    }
+}

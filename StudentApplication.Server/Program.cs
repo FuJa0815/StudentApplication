@@ -1,4 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.EntityFrameworkCore;
 using StudentApplication.Server.Attributes;
 using StudentApplication.Server.Data;
@@ -31,6 +30,8 @@ public static class Program
         {
             mvc.Conventions.Add(new ControllerNameAttributeConvention());
             mvc.InputFormatters.Insert(0, MyJsonPatchInputFormatter.GetJsonPatchInputFormatter());
+        }).AddNewtonsoftJson(options =>
+        {
         });
         builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
@@ -40,6 +41,8 @@ public static class Program
         builder.Services.AddSignalR();
 
         builder.Services.AddTransient(typeof(IRestService<,>), typeof(RestService<,>));
+        builder.Services.AddScoped<ICoursesService, CoursesService>();
+        builder.Services.AddScoped<IStudentsService, StudentsService>();
 
         var app = builder.Build();
 

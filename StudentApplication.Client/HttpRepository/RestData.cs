@@ -1,14 +1,14 @@
 using System.Collections;
 using System.Collections.Specialized;
-using System.ComponentModel.Design.Serialization;
 using System.Diagnostics.Contracts;
 using System.Net.Http.Json;
 using System.Reflection;
-using System.Text.Json;
 using System.Web;
 using Microsoft.AspNetCore.SignalR.Client;
+using Newtonsoft.Json;
 using StudentApplication.Common.Attributes;
 using StudentApplication.Common.Utils;
+using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace StudentApplication.Client.HttpRepository;
 
@@ -277,7 +277,10 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     {
         response.EnsureSuccessStatusCode();
         var stream = await response.Content.ReadAsStreamAsync();
-        var obj = await JsonSerializer.DeserializeAsync<TResp>(stream);
+        using StreamReader sr = new(stream);
+        using JsonReader reader = new JsonTextReader(sr);
+        JsonSerializer serializer = new();
+        var obj = serializer.Deserialize<TResp>(reader);
         if (obj == null)
             throw new HttpRequestException("Could not deserialize JSON");
         return obj;
