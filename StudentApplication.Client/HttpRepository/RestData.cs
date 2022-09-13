@@ -23,6 +23,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     private readonly HttpClient _client;
     private readonly NotificationHub _hub;
     private readonly string _endpoint;
+    private readonly ILogger _logger;
     
     private int _page = 0;
     private int _pageLength = 10;
@@ -53,6 +54,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     public async Task SetPageAsync(int page)
     {
         _page = page;
+        _logger.LogDebug($"Went to page {page}");
         await FetchAsync(page - 1);
         await FetchAsync(page);
         await FetchAsync(page + 1);
@@ -70,6 +72,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     public async Task SetPageLengthAsync(int pageLength)
     {
         _pageLength = pageLength;
+        _logger.LogDebug($"Set page length to {pageLength}");
         await FetchAsync(Page - 1);
         await FetchAsync();
         await FetchAsync(Page + 1);
@@ -92,6 +95,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     {
         _sortBy = sortBy;
         _sortAscending = ascending;
+        _logger.LogDebug($"Sorting by {sortBy} {(ascending?"ascending":"descending")}");
         await Reload();
     }
 
@@ -107,14 +111,16 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     public async Task SetQueryAsync(string query)
     {
         _query = query;
+        _logger.LogDebug($"Searching for {query}");
         await Reload();
     }
     
-    public RestData(HttpClient client, NotificationHub notificationHub)
+    public RestData(HttpClient client, NotificationHub notificationHub, ILogger<RestData<T, TKey>> logger)
     {
         _hub = notificationHub;
         _client = client;
         _endpoint = typeof(T).GetCustomAttribute<RestEndpointAttribute>()?.Url ?? throw new ArgumentException("Generic type T must have a RestEndpoint attribute");
+        _logger = logger;
         
         notificationHub.HubConnection.On<T>($"{_endpoint}_update", ItemUpdated);
         notificationHub.HubConnection.On<T>($"{_endpoint}_create", async item => await ItemAdded(item));
@@ -130,6 +136,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await _hub.ConnectAsync();
         await Reload();
         await _hub.JoinGroupAsync(_endpoint);
+        _logger.LogDebug("Initialized");
     }
 
     /// <summary>
@@ -137,6 +144,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     /// </summary>
     private async Task ItemDeleted(TKey key)
     {
+        _logger.LogInformation($"Item with id {key} deleted");
         _items--;
         var index = _list.FindIndex(i => i.Id.Equals(key));
         if (index == -1)
@@ -155,6 +163,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     /// </summary>
     private void ItemUpdated(T item)
     {
+        _logger.LogInformation($"Item with id {item.Id} updated");
         var index = _list.FindIndex(i => i.Id.Equals(item.Id));
         if (index == -1)
             return;
@@ -171,6 +180,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     /// </summary>
     private async Task ItemAdded(T item)
     {
+        _logger.LogInformation($"Item with id {item.Id} added");
         _items++;
         // Check if the added item matches the current search term
         if (!MatchesQuery(item))
@@ -266,6 +276,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     {
         GC.SuppressFinalize(this);
         await _hub.LeaveGroupAsync(_endpoint);
+        _logger.LogInformation($"Connection closed");
     }
 
     /// <summary>
@@ -291,7 +302,11 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
 
         // Do not fetch if we already have all info
         if (Enumerable.Range(firstItemIndex, PageLength).All(i => Get(i) != null))
+        {
+            _logger.LogInformation($"Not loading page {page} because we have all data here");
             return;
+        }
+        _logger.LogInformation($"Loading page {page}, sort by {SortBy}, filtered by {Query}");
         
         var uriBuilder = new UriBuilder(_client.BaseAddress!+_endpoint);
         var getQuery = HttpUtility.ParseQueryString(uriBuilder.Query);
@@ -330,15 +345,17 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     /// </summary>
     public async Task Add(T item)
     {
+        _logger.LogInformation($"Added new item locally");
         item.Id = await JsonUtils.ReadResultAsync<TKey>(await _client.PostAsync(_endpoint, JsonContent.Create(item)));
     }
 
     /// <summary>
     ///   Removes an item from the list. Others will be informed.
     /// </summary>
-    public async Task<bool> Remove(TKey item)
+    public async Task<bool> Remove(TKey key)
     {
-        return (await _client.DeleteAsync($"{_endpoint}/{item}")).IsSuccessStatusCode;
+        _logger.LogInformation($"Removed item with id {key} locally");
+        return (await _client.DeleteAsync($"{_endpoint}/{key}")).IsSuccessStatusCode;
     }
 
     /// <summary>
@@ -346,6 +363,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
     /// </summary>
     public async Task<bool> Update(T item)
     {
+        _logger.LogInformation($"Updated item with id {item.Id} locally");
         return (await _client.PutAsync($"{_endpoint}", JsonContent.Create(item))).IsSuccessStatusCode;
     }
 }

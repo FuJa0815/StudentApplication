@@ -70,12 +70,12 @@ public class RestService<T, TKey> : IRestService<T, TKey>
             return false;
         }
         
-        Logger.LogInformation($"{ControllerName} with id {id} deleted");
 
         Model.Remove(model);
         await Hub.Clients.Groups(ControllerName, $"{ControllerName}.{model.Id}")
             .SendCoreAsync($"{ControllerName}_delete", new object[] { model.Id });
         await Db.SaveChangesAsync();
+        Logger.LogInformation($"{ControllerName} with id {id} deleted");
         return true;
     }
 
@@ -90,6 +90,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
             data = data.Reverse();
 
         data = data.Skip(page * pageLength).Take(pageLength);
+        Logger.LogDebug($"{count} {ControllerName} fetched");
 
         return new PaginationListResult<T>(await data.ToListAsync(), count);
     }

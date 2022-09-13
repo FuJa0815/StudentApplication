@@ -5,6 +5,9 @@ using StudentApplication.Client;
 using StudentApplication.Client.HttpRepository;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+builder.Services.AddLogging();
+
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 

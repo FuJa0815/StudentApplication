@@ -13,13 +13,8 @@ namespace StudentApplication.Server.Controllers;
 /// </summary>
 public class StudentsController : RestController<Student, int>
 {
-    /// <summary>
-    ///   Additional services besides normal CRUD operations for students are defined in this service.
-    /// </summary>
-    private readonly IStudentsService _studentsService;
-    public StudentsController(IRestService<Student, int> service, IStudentsService studentsService) : base(service)
+    public StudentsController(IRestService<Student, int> service) : base(service)
     {
-        _studentsService = studentsService;
     }
 
     public override DbSet<Student> ModelFromDb(ApplicationDbContext db) => db.Students;
@@ -35,20 +30,4 @@ public class StudentsController : RestController<Student, int>
         {
             s => s.Courses.First().Students
         };
-    
-    [HttpPost("{id}/courses/{courseId}")]
-    public async Task<ActionResult> AddCourse(string id, string courseId)
-    {
-        if (await _studentsService.AddCourse(id, courseId))
-            return Ok();
-        return NotFound();
-    }
-
-    [HttpDelete("{id}/courses/{courseId}")]
-    public async Task<ActionResult> RemoveStudent(string id, string courseId)
-    {
-        if (await _studentsService.RemoveCourse(id, courseId))
-            return Ok();
-        return NotFound();
-    }
 }

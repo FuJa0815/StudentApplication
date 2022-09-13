@@ -60,11 +60,11 @@
         if (SelectedCourses == null) return;
         foreach (var course in OriginalSelectedCourses.Where(course => !SelectedCourses.Contains(course)))
         {
-            await Http.DeleteAsync($"students/{Student.Id}/courses/{course.Id}");
+            await Http.DeleteAsync($"courses/{course.Id}/students/{Student.Id}");
         }
         foreach (var course in SelectedCourses.Where(course  => !OriginalSelectedCourses.Contains(course)))
         {
-            await Http.PostAsync($"students/{Student.Id}/courses/{course.Id}", null);
+            await Http.PostAsync($"courses/{course.Id}/students/{Student.Id}", null);
         }
         MudDialog.Close(DialogResult.Ok(true));
         OriginalSelectedCourses = new HashSet<Course>(SelectedCourses);

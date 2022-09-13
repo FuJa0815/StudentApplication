@@ -37,7 +37,6 @@ public static class Program
 
         builder.Services.AddTransient(typeof(IRestService<,>), typeof(RestService<,>));
         builder.Services.AddScoped<ICoursesService, CoursesService>();
-        builder.Services.AddScoped<IStudentsService, StudentsService>();
 
         var app = builder.Build();
 
