@@ -1,3 +1,6 @@
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
 namespace StudentApplication.Server.Hub;
 
 /// <summary>
