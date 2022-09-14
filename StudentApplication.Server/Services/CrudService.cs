@@ -35,7 +35,7 @@ public class CrudService<T, TKey> : ICrudService<T, TKey>
     // Functions set by the CrudController
     public Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; } = null!;
     public Func<DbSet<T>, IQueryable<T>> QueryableFromModel { get; set; } = null!;
-    public Func<string> GetControllerName { get; set; }
+    public Func<string> GetControllerName { get; set; } = null!;
     
     private IHubContext<NotificationHub> Hub { get; }
     private ApplicationDbContext Db { get; }
