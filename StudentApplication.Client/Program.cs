@@ -1,5 +1,9 @@
+using System;
+using System.Net.Http;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using StudentApplication.Client;
 using StudentApplication.Client.HttpRepository;

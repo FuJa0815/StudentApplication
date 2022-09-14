@@ -1,3 +1,5 @@
+using System;
+
 namespace StudentApplication.Common.Attributes;
 
 /// <summary>

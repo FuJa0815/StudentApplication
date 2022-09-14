@@ -2,6 +2,7 @@
 
 using System.Reflection;
 using System.ArrayExtensions;
+using System.Collections.Generic;
 
 // ReSharper disable once CheckNamespace
 namespace System
