@@ -6,7 +6,7 @@ using StudentApplication.Common.Utils;
 
 namespace StudentApplication.Common.Models;
 
-[RestEndpoint("students")]
+[CrudEndpoint("students")]
 [Index(nameof(Email), IsUnique = true)]
 public class Student : IModel<int>
 {

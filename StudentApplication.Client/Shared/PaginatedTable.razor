@@ -6,7 +6,7 @@
 @using StudentApplication.Common.Attributes
 @typeparam T where T : class, IModel<TKey>
 @typeparam TKey where TKey : IEquatable<TKey>
-@inject RestData<T, TKey> Data
+@inject CrudData<T, TKey> Data
 <MyMudTable T="T" TKey="TKey" RowsPerPage="@Data.PageLength"
             RowsPerPageChanged="async i => await Data.SetPageLengthAsync(i)"
             Bordered="true"

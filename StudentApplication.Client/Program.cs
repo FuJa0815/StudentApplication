@@ -16,6 +16,6 @@ var hubServer = builder.Configuration.GetValue<string>("HubServer");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(restServer) });
 builder.Services.AddScoped(sp => new NotificationHub(new Uri(hubServer)));
-builder.Services.AddScoped(typeof(RestData<,>));
+builder.Services.AddScoped(typeof(CrudData<,>));
 builder.Services.AddMudServices();
 await builder.Build().RunAsync();

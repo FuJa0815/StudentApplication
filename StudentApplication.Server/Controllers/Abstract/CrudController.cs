@@ -19,7 +19,7 @@ namespace StudentApplication.Server.Controllers.Abstract;
 /// <typeparam name="TKey">The primary key type. Alternate REST-keys can be defined via the <see cref="StudentApplication.Common.Attributes.RestKeyAttribute"/> attribute</typeparam>
 [ApiController]
 [Route("api/v1/[controller]")]
-public abstract class RestController<T, TKey> : Controller
+public abstract class CrudController<T, TKey> : Controller
     , ICreatableController<T, TKey>
     , IFetchableController<T>
     , IUpdatableController<T>
@@ -43,9 +43,9 @@ public abstract class RestController<T, TKey> : Controller
     /// <summary>
     ///   The main service for this class
     /// </summary>
-    private IRestService<T, TKey> Service { get; }
+    private ICrudService<T, TKey> Service { get; }
 
-    public RestController(IRestService<T, TKey> service)
+    public CrudController(ICrudService<T, TKey> service)
     {
         // Some functions need to be injected
         service.GetControllerName = () => ControllerContext.ActionDescriptor.ControllerName;

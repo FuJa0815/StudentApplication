@@ -14,13 +14,13 @@ namespace StudentApplication.Server.Controllers;
 /// <summary>
 ///   Endpoints for courses
 /// </summary>
-public class CoursesController : RestController<Course, int>
+public class CoursesController : CrudController<Course, int>
 {
     /// <summary>
     ///   Additional services besides normal CRUD operations for courses are defined in this service.
     /// </summary>
     private readonly ICoursesService _coursesService;
-    public CoursesController(IRestService<Course, int> service, ICoursesService coursesService) : base(service)
+    public CoursesController(ICrudService<Course, int> service, ICoursesService coursesService) : base(service)
     {
         _coursesService = coursesService;
     }

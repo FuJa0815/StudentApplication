@@ -13,7 +13,7 @@ namespace StudentApplication.Client.HttpRepository;
 ///   A <see cref="IEnumerable{T}"/> continuously communicating with the REST server, listening for updates via SignalR,
 ///   automatically fetching new data when required and informing the server about changes.
 /// </summary>
-public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionChanged
+public class CrudData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionChanged
     where T : IModel<TKey>
     where TKey : IEquatable<TKey>
 {
@@ -115,11 +115,11 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         await Reload();
     }
     
-    public RestData(HttpClient client, NotificationHub notificationHub, ILogger<RestData<T, TKey>> logger)
+    public CrudData(HttpClient client, NotificationHub notificationHub, ILogger<CrudData<T, TKey>> logger)
     {
         _hub = notificationHub;
         _client = client;
-        _endpoint = typeof(T).GetCustomAttribute<RestEndpointAttribute>()?.Url ?? throw new ArgumentException("Generic type T must have a RestEndpoint attribute");
+        _endpoint = typeof(T).GetCustomAttribute<CrudEndpointAttribute>()?.Url ?? throw new ArgumentException("Generic type T must have a CrudEndpoint attribute");
         _logger = logger;
         
         notificationHub.HubConnection.On<T>($"{_endpoint}_update", ItemUpdated);
@@ -259,7 +259,7 @@ public class RestData<T, TKey> : IEnumerable<T>, IDisposable, INotifyCollectionC
         return _list.AsEnumerable();
     }
 
-    ~RestData()
+    ~CrudData()
     {
         Dispose();
     }

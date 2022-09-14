@@ -25,5 +25,5 @@ public class MyMudTable<T, TKey> : MudTable<T>
     [Parameter]
     public EventCallback<int> CurrentPageChanged { get; set; }
 
-    protected override int NumPages => ((RestData<T, TKey>)Items).Pages;
+    protected override int NumPages => ((CrudData<T, TKey>)Items).Pages;
 }

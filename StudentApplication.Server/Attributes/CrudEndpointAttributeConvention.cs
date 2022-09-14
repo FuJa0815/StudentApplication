@@ -9,31 +9,31 @@ using StudentApplication.Server.Controllers.Abstract;
 namespace StudentApplication.Server.Attributes;
 
 /// <summary>
-///   Defines a controller naming convention based upon the <see cref="RestEndpointAttribute"/> on the model
+///   Defines a controller naming convention based upon the <see cref="CrudEndpointAttribute"/> on the model
 /// </summary>
-public class RestEndpointAttributeConvention : IControllerModelConvention
+public class CrudEndpointAttributeConvention : IControllerModelConvention
 {
     public void Apply(ControllerModel controller)
     {
-        var attribute = GetRestControllerType(controller.ControllerType)?.GenericTypeArguments.First().GetCustomAttribute<RestEndpointAttribute>();
-        // No special controller handling is done when no RestEndpointAttribute was found
+        var attribute = GetCrudControllerType(controller.ControllerType)?.GenericTypeArguments.First().GetCustomAttribute<CrudEndpointAttribute>();
+        // No special controller handling is done when no CrudEndpointAttribute was found
         if (attribute == null)
             return;
         controller.ControllerName = attribute.Url;
     }
 
     /// <summary>
-    ///   Recursive method that looks for an inherited <see cref="RestController{T,TKey}"/> and returns it.
+    ///   Recursive method that looks for an inherited <see cref="CrudController{T,TKey}"/> and returns it.
     /// </summary>
     [Pure]
-    private static Type? GetRestControllerType(Type? t)
+    private static Type? GetCrudControllerType(Type? t)
     {
         if (t == null)
             return null;
         var compareTo = t;
         if (t.IsGenericType)
             compareTo = t.GetGenericTypeDefinition();
-        return compareTo == typeof(RestController<,>) ? t : GetRestControllerType(t.BaseType);
+        return compareTo == typeof(CrudController<,>) ? t : GetCrudControllerType(t.BaseType);
         
     }
 }

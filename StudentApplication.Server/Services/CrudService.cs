@@ -14,7 +14,7 @@ using StudentApplication.Server.Hub;
 
 namespace StudentApplication.Server.Services;
 
-public interface IRestService<T, TKey>
+public interface ICrudService<T, TKey>
     where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
@@ -28,11 +28,11 @@ public interface IRestService<T, TKey>
     Task Override(T body);
 }
 
-public class RestService<T, TKey> : IRestService<T, TKey>
+public class CrudService<T, TKey> : ICrudService<T, TKey>
     where T : class, IModel<TKey>
     where TKey : IEquatable<TKey>
 {
-    // Functions set by the RestController
+    // Functions set by the CrudController
     public Func<ApplicationDbContext, DbSet<T>> ModelFromDb { get; set; } = null!;
     public Func<DbSet<T>, IQueryable<T>> QueryableFromModel { get; set; } = null!;
     public Func<string> GetControllerName { get; set; }
@@ -44,7 +44,7 @@ public class RestService<T, TKey> : IRestService<T, TKey>
     private IQueryable<T> WithIncludes => QueryableFromModel(Model);
     private ILogger Logger { get; }
 
-    public RestService(IHubContext<NotificationHub> hub, ApplicationDbContext db, ILogger<RestService<T, TKey>> logger)
+    public CrudService(IHubContext<NotificationHub> hub, ApplicationDbContext db, ILogger<CrudService<T, TKey>> logger)
     {
         Hub = hub;
         Db = db;

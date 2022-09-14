@@ -12,9 +12,9 @@ namespace StudentApplication.Server.Controllers;
 /// <summary>
 ///   Endpoints for students
 /// </summary>
-public class StudentsController : RestController<Student, int>
+public class StudentsController : CrudController<Student, int>
 {
-    public StudentsController(IRestService<Student, int> service) : base(service)
+    public StudentsController(ICrudService<Student, int> service) : base(service)
     {
     }
 

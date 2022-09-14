@@ -32,7 +32,7 @@ public static class Program
 
         builder.Services.AddControllers(mvc =>
         {
-            mvc.Conventions.Add(new RestEndpointAttributeConvention());
+            mvc.Conventions.Add(new CrudEndpointAttributeConvention());
         }).AddNewtonsoftJson();
         builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
@@ -41,7 +41,7 @@ public static class Program
 
         builder.Services.AddSignalR();
 
-        builder.Services.AddTransient(typeof(IRestService<,>), typeof(RestService<,>));
+        builder.Services.AddTransient(typeof(ICrudService<,>), typeof(CrudService<,>));
         builder.Services.AddScoped<ICoursesService, CoursesService>();
 
         var app = builder.Build();
